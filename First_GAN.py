@@ -17,7 +17,9 @@ class GAN:
         self.dropout = 0.4 #pourcentage de neurone désactivé par entrainement pour éviter de l'overfitting
         self.n = 645 #Nombre d'images de fleurs que l'on a
         self.nFake = 645 #Nombre de fausses images que l'on va créer pour le test
-        self.trainSteps = 500
+        self.trainSteps = 1000
+        self.half_batch_size = 20 #Moitié du batch size, ce qui correspond au nombre de vrais photos prisent pour le test
+        self.batch_size = 2*self.half_batch_size #Nombre d'images utilisés pour une iteration
 
     def create_discriminator(self):
         self.D = keras.models.Sequential()
@@ -106,7 +108,7 @@ class GAN:
 
     def load_imgs(self):
         self.imgs = np.empty((self.n,self.dim, self.dim, 3))
-        for k in range(self.imgs.shape[0]):
+        for k in range(self.n):
             self.imgs[k,...] = mpimg.imread("Flowers/Data/"+str(k)+".jpg")/255
 
 
@@ -115,30 +117,40 @@ class GAN:
         plt.show()
 
     def create_training_sets(self):
-        #On fabrique les faux
-        self.fakes = np.random.uniform(0,1,size=(self.nFake,self.dim, self.dim, 3))
+        #On fabrique half_batch_size faux
+        self.fakes = np.random.uniform(0,1,size=(self.half_batch_size,self.dim, self.dim, 3))
+
+        #On tire half_batch_size vrais images au hasard
+        self.vrais = self.imgs[np.random.randint(0,self.n, size=self.half_batch_size) ,...]
         
         #On créer notre datatest
-        self.x = np.concatenate((self.imgs, self.fakes))
+        self.x = np.concatenate((self.vrais, self.fakes))
     
         #On créer les réponses à la question "est ce que cette image est vraie? pour entrainer le discrimineur
-        self.y = np.concatenate((np.array([1 for k in range(self.n)]), np.array([0 for k in range(self.nFake)])))
+        self.y = np.concatenate((np.array([1 for k in range(self.half_batch_size)]), np.array([0 for k in range(self.half_batch_size)])))
         
     def train_discriminator(self):
+        s = time.time()
         for _ in range(self.trainSteps):
-            s = time.time()
+            #On fabrique nos training sets
+            self.create_training_sets()
+
+            #On lance la procédure
             d_loss = self.TD.train_on_batch(self.x, self.y)
-            print(str(d_loss) + " | " + str(time.time()-s) +  "s")
+
+            #On affiche le résultat
+            if _%(self.trainSteps//10) == 0:
+                print(str(d_loss) + " | " + str(time.time()-s) +  "s")
+                s = time.time()
     
 
 
 
 #On créer notre GAN
+
 gan = GAN()
 gan.create_discriminator()
 gan.create_training_model_discriminator()
 gan.load_imgs()
-gan.create_training_sets()
-print(gan.train_discriminator())
-
+gan.train_discriminator()
 
