@@ -1,0 +1,2 @@
+urls = Array.from(document.querySelectorAll('.tile--img__img')).map(el=>el.src);
+window.open('data:text/csv;charset=utf-8,' + escape(urls.join('\n')));

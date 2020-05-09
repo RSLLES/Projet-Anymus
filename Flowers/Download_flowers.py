@@ -49,10 +49,10 @@ def standard(path):
     
 
 
-with open("Flowers/flowers_url.txt") as f:
+with open("Flowers/random_url.txt") as f:
     id = 0
     for url in f.readlines():
-        path = "Flowers/Data/" + str(id) + ".jpg"
+        path = "Flowers/Random/" + str(id) + ".jpg"
 
         #On télécharge l'image
         if(download_image(url, path)):

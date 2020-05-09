@@ -15,10 +15,10 @@ class GAN:
         self.dim = 128 #Dimension de notre image, qui doit être carrée
         self.depth = 32 #nombre de base de filtre dans nos couche de convolution
         self.dropout = 0.4 #pourcentage de neurone désactivé par entrainement pour éviter de l'overfitting
-        self.n = 645 #Nombre d'images de fleurs que l'on a
-        self.nFake = 645 #Nombre de fausses images que l'on va créer pour le test
-        self.trainSteps = 1000
-        self.half_batch_size = 20 #Moitié du batch size, ce qui correspond au nombre de vrais photos prisent pour le test
+        self.n = 1300 #Nombre d'images de fleurs que l'on a
+        self.nFake = 976 #Nombre de fausses images que l'on a
+        self.trainSteps = 300
+        self.half_batch_size = 40 #Moitié du batch size, ce qui correspond au nombre de vrais photos prisent pour le test
         self.batch_size = 2*self.half_batch_size #Nombre d'images utilisés pour une iteration
 
     def create_discriminator(self):
@@ -89,7 +89,7 @@ class GAN:
         self.G.summary()
 
     def create_training_model_discriminator(self):
-        #On fabrique le model pour entrainer le discriminateur. Rien de bien dur, 
+        #On fabrique le model pour entrainer le discriminateur. Rien de bien dur, puisque le le discriminateur s'entraine tout seul
         self.TD = keras.models.Sequential()
         #Optimizer, valeurs complétement arbitraires
         optimizer = keras.optimizers.RMSprop(lr=0.008, clipvalue=1.0, decay=6e-8)
@@ -101,33 +101,48 @@ class GAN:
         #La, il faut entrainer les deux réseaux en même temps.
         #On construit donc la structure Generateur -> Disciminateur que l'on va optimiser
         optimizer = keras.optimizers.RMSprop(lr=0.0004, clipvalue=1.0, decay=3e-8)
-        self.TGAN = keras.Model.Sequential()
-        self.TGAN.add(self.G())
-        self.TGAN.add(self.D())
+        self.TGAN = keras.models.Sequential()
+        self.TGAN.add(self.G)
+        self.TGAN.add(self.D)
         self.TGAN.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
+    def load_img(self, path):
+        return mpimg.imread(path)/255
+
     def load_imgs(self):
-        self.imgs = np.empty((self.n,self.dim, self.dim, 3))
+        self.imgs = np.empty((self.n, self.dim, self.dim, 3))
         for k in range(self.n):
-            self.imgs[k,...] = mpimg.imread("Flowers/Data/"+str(k)+".jpg")/255
+            self.imgs[k,...] = self.load_img("Flowers/Data/"+str(k)+".jpg")
+        print("{:d} images chargées".format(self.n))
+
+    def load_fakes(self):
+        self.fakes = np.empty((self.nFake, self.dim, self.dim, 3))
+        for k in range(self.nFake):
+            self.imgs[k,...] = self.load_img("Flowers/Random/"+str(k)+".jpg")
+        print("{:d} images chargées".format(self.nFake))
 
 
-    def show_img(self, img):
+    def show_img(self, img, title=""):
         imgplot = plt.imshow(img)
+        plt.title = title
+        plt.legend()
         plt.show()
 
     def create_training_sets(self):
         #On fabrique half_batch_size faux
-        self.fakes = np.random.uniform(0,1,size=(self.half_batch_size,self.dim, self.dim, 3))
+        self.noise = np.random.uniform(0,1,size=(self.half_batch_size,self.dim, self.dim, 3))
 
-        #On tire half_batch_size vrais images au hasard
+        #On tire half_batch_size vrais images au hasard dans la liste que l'on a
         self.vrais = self.imgs[np.random.randint(0,self.n, size=self.half_batch_size) ,...]
+
+        #On tire half_batch_size fausses images au hasard dans la liste que l'on a
+        self.f = self.fakes[np.random.randint(0,self.nFake, size=self.half_batch_size) ,...]
         
         #On créer notre datatest
-        self.x = np.concatenate((self.vrais, self.fakes))
+        self.x = np.concatenate((self.vrais, self.f, self.noise))
     
         #On créer les réponses à la question "est ce que cette image est vraie? pour entrainer le discrimineur
-        self.y = np.concatenate((np.array([1 for k in range(self.half_batch_size)]), np.array([0 for k in range(self.half_batch_size)])))
+        self.y = np.concatenate((np.array([1 for k in range(self.half_batch_size)]), np.array([0 for k in range(2*self.half_batch_size)])))
         
     def train_discriminator(self):
         s = time.time()
@@ -140,17 +155,64 @@ class GAN:
 
             #On affiche le résultat
             if _%(self.trainSteps//10) == 0:
-                print(str(d_loss) + " | " + str(time.time()-s) +  "s")
+                print("Loss : {:d}, Précision : {:d}, Temps : {:d}".format(d_loss[0], d_loss[1], time.time()-s))
                 s = time.time()
+
+    def train_all(self):
+        s = time.time()
+        for _ in range(self.trainSteps):
+            #On fabrique nos training sets
+            self.create_training_sets()
+
+            #On lance l'entrainement du discriminateur
+            d_loss = self.TD.train_on_batch(self.x, self.y)
+
+            #On lance l'entrainement du générateur
+            x = np.random.uniform(0,1,size=(self.batch_size,100))
+            y = np.array([1 for k in range(self.batch_size)])
+            g_loss = self.TGAN.train_on_batch(x, y)
+
+            #On affiche le résultat
+            if _%(self.trainSteps//10) == 0:
+                print("Discriminateur | Loss : {}, Précision : {}, Temps : {}".format(d_loss[0], d_loss[1], time.time()-s))
+                print("GAN | Loss : {}, Précision : {}, Temps : {}".format(g_loss[0], g_loss[1], time.time()-s))
+                print("-----------------------------------")
+                s = time.time()
+
+    def save_weigts(self):
+        self.TGAN.save_weights("TGAN.h5")
+
+    def load_weigts(self):
+        self.TGAN.load_weights("TGAN.h5")
+
+    def save_weigts_discriminator(self):
+        self.D.save_weights('D1.h5')
+
+    def load_weigts_discriminator(self):
+        self.D.load_weights('D1.h5')
+
+    def test_discriminator_with_img(self, path):
+        img = self.load_img(path)
+        img_transform = img[np.newaxis, ...]
+        result  = self.TD.predict(img_transform)
+        print(result)
+        self.show_img(img, str(result))
+
+    def generate_img(self):
+        x = np.random.uniform(0,1,size=(1,100))
+        result = self.G.predict(x)
+        self.show_img(result[0,...])
     
 
 
-
-#On créer notre GAN
-
 gan = GAN()
 gan.create_discriminator()
+gan.create_generator()
 gan.create_training_model_discriminator()
+gan.create_training_model_GAN()
 gan.load_imgs()
-gan.train_discriminator()
-
+gan.load_fakes()
+gan.train_all()
+gan.save_weigts()
+#gan.load_weigts()
+gan.generate_img()
