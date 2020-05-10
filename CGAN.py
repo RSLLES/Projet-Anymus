@@ -203,7 +203,7 @@ def create_training_model_gen(gen_A, d_A, gen_B, dim = 256):
     Cette méthode combine les différents réseau pour en déduire des fonctions de loss que nous allons chercher a minimiser
     Ici, c'est seulement gen_A qui va être minimisé
     """
-    #Seulement gen_a doit etre entrainé, les autres non
+    #Seulement gen_A doit etre entrainé, les autres non
     gen_A.trainable = True
     d_A.trainable = False
     gen_B.trainable = False
@@ -287,7 +287,7 @@ def train(  gen_A, d_A, gen_B, d_B,
 
             #Entrainements
             #1) On entraine gen_a : [input_from_A, input_from_B] -> [d_A_Out, out_direct, out_indirect, out_identity]
-            loss_gen_a, _, _, _, _ = training_model_gen_A.train_on_batch([xa_real, xb_real], [ya_real, xb_real, xa_real, xa_real])
+            loss_gen_A, _, _, _, _ = training_model_gen_A.train_on_batch([xa_real, xb_real], [ya_real, xb_real, xa_real, xa_real])
 
             #2) On entraine gen_b : [input_from_B, input_from_A] -> [d_B_Out, out_direct, out_indirect, out_identity]
             loss_gen_B, _, _, _, _ = training_model_gen_B.train_on_batch([xb_real, xa_real], [yb_real, xa_real, xb_real, xb_real])
