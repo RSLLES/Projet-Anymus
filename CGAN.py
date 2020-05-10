@@ -47,8 +47,8 @@ def load_compressed_images():
 def load_data():
     """Charge les images et les convertis entre -1 et 1 pour être bien utilisée dans la suite """
     XA,XB = load_compressed_images()
-    XA = XA/127.5-127.5
-    XB = XB/127.5-127.5
+    XA = XA/127.5-1
+    XB = XB/127.5-1
     return XA,XB
 
 def show_images(dataA, dataB):
@@ -99,11 +99,11 @@ def load_images(path, size=(256,256)):
 ########## Création du réseau ##########
 ########################################
 
-def create_discriminator(dim = 256, depht = 32):
+def create_discriminator(dim = 256, depht = 32, name=""):
     """
     Retourne un nouveau discriminator type de ceux que nous allons utiliser
     """
-    D = keras.models.Sequential()
+    D = keras.models.Sequential(name="d_{}".format(name))
     #Layer 1 : Convolution avec un filtre de 4x4 qui se déplace de 2 pixels en 2 -> Division du nombre de pixel par 2; depht filtres utilisés
     #On ajoute un BatchNormalization pour réduire les poids et éviter une explosion du gradient
     #1] Conv; dim*dim*3 -> dim/2*dim/2*depht
@@ -132,53 +132,55 @@ def create_discriminator(dim = 256, depht = 32):
 
     #On compile
     D.compile(loss="binary_crossentropy", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), metrics=['accuracy'])
+    D.summary()
     return D
 
-def create_generator(dim = 256,depht = 32, n_resnet = 9):
+def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
     """Créer un générateur typique utilisé dans la suite
     La structure est plus complexe, on part de la taille d'une image que l'on compress, puis on réétend pour refaire une image.
     Juste pour essayer, j'essaye aussi une autre notation pour créer des réseaux"""
     input_layer = keras.layers.Input(shape=(dim,dim,3))
 
     #1] Conv; dim*dim*3 -> dim/2*dim/2*depht
-    C1 = keras.layers.Conv2D(depht, (7,7), strides=(2,2), padding="same")(input_layer)
-    B1 = keras.layers.BatchNormalization()(C1)
-    R1 = keras.layers.Activation("relu")(B1)
+    g = keras.layers.Conv2D(depht, (7,7), strides=(2,2), padding="same")(input_layer)
+    g = keras.layers.BatchNormalization()(g)
+    g = keras.layers.Activation("relu")(g)
 
     #2] Conv; dim/2*dim/2*depht -> dim/4*dim/4*2*depht
-    C2 = keras.layers.Conv2D(2*depht, (3,3), strides=(2,2), padding="same")(R1)
-    B2 = keras.layers.BatchNormalization()(C2)
-    R2 = keras.layers.Activation("relu")(B2)
+    g = keras.layers.Conv2D(2*depht, (3,3), strides=(2,2), padding="same")(g)
+    g = keras.layers.BatchNormalization()(g)
+    g = keras.layers.Activation("relu")(g)
 
     #3] Conv; dim/4*dim/4*2*depht -> dim/8*dim/8*4*depht
-    C3 = keras.layers.Conv2D(4*depht, (3,3), strides=(2,2), padding="same")(R2)
-    B3 = keras.layers.BatchNormalization()(C3)
-    R3 = keras.layers.Activation("relu")(B3)
+    g = keras.layers.Conv2D(4*depht, (3,3), strides=(2,2), padding="same")(g)
+    g = keras.layers.BatchNormalization()(g)
+    g = keras.layers.Activation("relu")(g)
 
     #Au milieu, on ajoute autant de resnet_block que l'on vezut
-    RSNET = R3
     for _ in range(n_resnet):
-        RSNET = create_resnet(n_filters=4*depht, input = RSNET)
+        g = create_resnet(n_filters=4*depht, T = g)
     
     #On redéroule dans l'autre sens
     #4] ConvT; dim/8*dim/8*4*depht -> dim/4*dim/4*2*depht
-    CT1 = keras.layers.Conv2DTranspose(2*depht, (3,3), strides=(2,2), padding="same")(RSNET)
-    BT1 = keras.layers.BatchNormalization()(CT1)
-    RT1 = keras.layers.Activation("relu")(BT1)
+    g = keras.layers.Conv2DTranspose(2*depht, (3,3), strides=(2,2), padding="same")(g)
+    g = keras.layers.BatchNormalization()(g)
+    g = keras.layers.Activation("relu")(g)
 
     #5] ConvT; dim/4*dim/4*2*depht -> dim/2*dim/2*depht
-    CT2 = keras.layers.Conv2DTranspose(depht, (3,3), strides=(2,2), padding="same", activation="relu")(RT1)
-    BT2 = keras.layers.BatchNormalization()(CT2)
-    RT2 = keras.layers.Activation("relu")(BT2)
+    g = keras.layers.Conv2DTranspose(depht, (3,3), strides=(2,2), padding="same", activation="relu")(g)
+    g = keras.layers.BatchNormalization()(g)
+    g = keras.layers.Activation("relu")(g)
 
     #6] ConvT; dim/2*dim/2*depht -> dim*dim*3
-    CT3 = keras.layers.Conv2DTranspose(3, (7,7), strides=(2,2), padding="same")(RT2)
-    TH = keras.layers.Activation("tanh")(CT3)
-    return keras.Model(input_layer, TH)
+    g = keras.layers.Conv2DTranspose(3, (7,7), strides=(2,2), padding="same")(g)
+    g = keras.layers.Activation("tanh")(g)
+    M = keras.Model(input_layer, g, name="gen_{}".format(name))
+    M.summary()
+    return M
 
 
-def create_resnet(n_filters, input):
-    N = keras.layers.Conv2D(n_filters, (3,3), strides=(1,1), padding="same")(input)
+def create_resnet(n_filters, T):
+    N = keras.layers.Conv2D(n_filters, (3,3), strides=(1,1), padding="same")(T)
     N = keras.layers.BatchNormalization()(N)
     N = keras.layers.Activation("relu")(N)
 
@@ -186,7 +188,7 @@ def create_resnet(n_filters, input):
     N = keras.layers.BatchNormalization()(N)
 
     #On additionne l'entrée et la sortie (ce qui fait la particularité du RESNET)
-    N = keras.layers.Add()([N, input])
+    N = keras.layers.Add()([N, T])
 
     #Dernière fonction d'activation
     N = keras.layers.Activation("relu")(N)
@@ -198,7 +200,7 @@ def create_resnet(n_filters, input):
 ########## Création des structures d'entrainement ##########
 ############################################################
 
-def create_training_model_gen(gen_A, d_A, gen_B, dim = 256):
+def create_training_model_gen(gen_A, d_A, gen_B, dim = 256, name=""):
     """
     Cette méthode combine les différents réseau pour en déduire des fonctions de loss que nous allons chercher a minimiser
     Ici, c'est seulement gen_A qui va être minimisé
@@ -228,7 +230,7 @@ def create_training_model_gen(gen_A, d_A, gen_B, dim = 256):
     out_identity = gen_A(input_from_A)
 
     #Ces 4 entrainements sont mis ensemble pour etre tous traités en même temps
-    model = keras.Model([input_from_A, input_from_B], [d_A_Out, out_direct, out_indirect, out_identity])
+    model = keras.Model([input_from_A, input_from_B], [d_A_Out, out_direct, out_indirect, out_identity],name="train_gen_{}".format(name))
     opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
     #On prend comme fonction de loss la somme pondéré des 4 fonctions de loss, en donnant plus de poids
     #au entrainement cycle direct et indirect, car d'après le papier ce sont les plus performants
@@ -237,7 +239,7 @@ def create_training_model_gen(gen_A, d_A, gen_B, dim = 256):
     #mae veut dire mean absolute error -> c'est la norme 1, donc on vise a minimiser sum |y_k-x_k| pour chaque pixel de l'image
     #ce choix vient d'un REX du papier
     model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 10, 10, 5], optimizer=opt)
-
+    model.summary()
     return model
 
 
@@ -268,10 +270,11 @@ def train(  gen_A, d_A, gen_B, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 100, 1, min(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 100, 5, min(XA.shape[0], XB.shape[0])
     n_batch_by_epochs = int(N_data/n_batch)
 
     #Et la boucle tourne a tournée
+
     for i_epo in range(n_epochs):
         print("#######################################")
         print("######## Début epoch {}/{} ############".format(i_epo, n_epochs))
@@ -287,10 +290,10 @@ def train(  gen_A, d_A, gen_B, d_B,
 
             #Entrainements
             #1) On entraine gen_a : [input_from_A, input_from_B] -> [d_A_Out, out_direct, out_indirect, out_identity]
-            loss_gen_A, _, _, _, _ = training_model_gen_A.train_on_batch([xa_real, xb_real], [ya_real, xb_real, xa_real, xa_real])
+            loss_gen_A = training_model_gen_A.train_on_batch([xa_real, xb_real], [ya_real, xb_real, xa_real, xa_real])
 
             #2) On entraine gen_b : [input_from_B, input_from_A] -> [d_B_Out, out_direct, out_indirect, out_identity]
-            loss_gen_B, _, _, _, _ = training_model_gen_B.train_on_batch([xb_real, xa_real], [yb_real, xa_real, xb_real, xb_real])
+            loss_gen_B= training_model_gen_B.train_on_batch([xb_real, xa_real], [yb_real, xa_real, xb_real, xb_real])
 
             #3) On entraine d_a : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
@@ -302,8 +305,8 @@ def train(  gen_A, d_A, gen_B, d_B,
             d_B.train_on_batch(xb_fake, yb_fake)
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
-        print("loss_gen_B : {}".format(loss_gen_A))
-        print("loss_gen_B : {}".format(loss_gen_B))
+        print("loss_gen_A ({}): {}".format(training_model_gen_A.metrics_names,loss_gen_A))
+        print("loss_gen_B ({}): {}".format(training_model_gen_A.metrics_names,loss_gen_B))
         print("loss_d_A : {} | acc_d_A : {}".format(loss_d_A, acc_d_A))
         print("loss_d_B : {} | acc_d_B : {}".format(loss_d_B, acc_d_B))
         screenshoot(XA, gen_B, i_epo)
@@ -333,12 +336,11 @@ dim = 256
 XA,XB = load_data()
 
 #Création des discriminateur qui sont eux deja compilés
-d_A, d_B = create_discriminator(), create_discriminator()
+d_A, d_B = create_discriminator(name="A"), create_discriminator(name="B")
 
 #Au tours des generateurs
-gen_A, gen_B = create_generator(),create_generator()
-training_model_gen_A, training_model_gen_B = create_training_model_gen(gen_A, d_A, gen_B), create_training_model_gen(gen_B, d_B, gen_A)
-
+gen_A, gen_B = create_generator(name="A"),create_generator(name="B")
+training_model_gen_A, training_model_gen_B = create_training_model_gen(gen_A, d_A, gen_B, name="A"), create_training_model_gen(gen_B, d_B, gen_A, name="B")
 #Et on y va
 train(  gen_A, d_A, gen_B, d_B, 
             training_model_gen_A, training_model_gen_B,  
