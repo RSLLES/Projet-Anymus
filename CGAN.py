@@ -1,13 +1,11 @@
 import tensorflow as tf
 import tensorflow.keras as keras
-import keras_contrib
 import numpy as np
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from keras_preprocessing.image import load_img
 from keras_preprocessing.image import img_to_array
-from keras.utils import plot_model
 from os import listdir
 from time import time
 from tqdm import tqdm
