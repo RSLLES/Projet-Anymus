@@ -268,7 +268,7 @@ def train(  gen_A, d_A, gen_B, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 100, 5, min(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 8, min(XA.shape[0], XB.shape[0])
     n_batch_by_epochs = int(N_data/n_batch)
 
     #Et la boucle tourne a tournée
@@ -304,7 +304,7 @@ def train(  gen_A, d_A, gen_B, d_B,
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
         print("loss_gen_A ({}): {}".format(training_model_gen_A.metrics_names,loss_gen_A))
-        print("loss_gen_B ({}): {}".format(training_model_gen_A.metrics_names,loss_gen_B))
+        print("loss_gen_B ({}): {}".format(training_model_gen_B.metrics_names,loss_gen_B))
         print("loss_d_A : {} | acc_d_A : {}".format(loss_d_A, acc_d_A))
         print("loss_d_B : {} | acc_d_B : {}".format(loss_d_B, acc_d_B))
         screenshoot(XA, gen_B, i_epo)
