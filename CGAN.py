@@ -236,7 +236,7 @@ def create_training_model_gen(gen_A, d_A, gen_B, dim = 256, name=""):
     #sur le discriminateur qui vaut 1 (donc on veut minimiser sum (d_A_out-1)^2)
     #mae veut dire mean absolute error -> c'est la norme 1, donc on vise a minimiser sum |y_k-x_k| pour chaque pixel de l'image
     #ce choix vient d'un REX du papier
-    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 10, 10, 5], optimizer=opt)
+    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 2, 2, 1], optimizer=opt)
     model.summary()
     return model
 
@@ -268,7 +268,7 @@ def train(  gen_A, d_A, gen_B, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 8, min(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 15, min(XA.shape[0], XB.shape[0])
     n_batch_by_epochs = int(N_data/n_batch)
 
     #Et la boucle tourne a tournée
