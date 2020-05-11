@@ -51,10 +51,10 @@ def load_data():
     XB = XB/127.5-1
     return XA,XB
 
-def show_images(dataA, dataB, titleA = None, titleB = None):
+def show_images(dataA, dataB, titleA = [], titleB = []):
     # plot source images
     for i in range(dataA.shape[0]):
-        if titleA == None:
+        if len(titleA) == 0:
             plt.subplot(2, dataA.shape[0], 1 + i)
         else:
             plt.subplot(2, dataA.shape[0], 1 + i, title=str(titleA[i]))
@@ -62,7 +62,7 @@ def show_images(dataA, dataB, titleA = None, titleB = None):
         plt.imshow(dataA[i].astype('uint8'))
     # plot target image
     for i in range(dataB.shape[0]):
-        if titleB == None:
+        if len(titleB) == 0:
             plt.subplot(2, dataB.shape[0], 1 + dataA.shape[0] + i)
         else:
             plt.subplot(2, dataB.shape[0], 1 + dataA.shape[0] + i,title=str(titleB[i]))
