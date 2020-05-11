@@ -303,15 +303,14 @@ def train(  gen_A, d_A, gen_B, d_B,
 
             #3) On entraine d_a : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
-            loss_d_A_real, acc_d_A_real = d_A.train_on_batch(xa_real, ya_real)
-            loss_d_A_fake, acc_d_A_fake = d_A.train_on_batch(xa_fake, ya_fake)
-            #On calcul alors la moyenne pour avoir la loss
-            loss_d_A, acc_d_A = 0.5*(loss_d_A_fake+loss_d_A_real), 0.5*(acc_d_A_fake+acc_d_A_real)
+            trainAx, trainAY = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
+            loss_d_A, acc_d_A = d_A.train_on_batch(trainAx, trainAY)
 
-            #4) On entraine d_b de la meme facon
-            loss_d_B_real, acc_d_B_real = d_B.train_on_batch(xb_real, yb_real)
-            loss_d_B_fake, acc_d_B_fake = d_B.train_on_batch(xb_fake, yb_fake)
-            loss_d_B, acc_d_B = 0.5*(loss_d_B_fake+loss_d_B_real), 0.5*(acc_d_B_fake+acc_d_B_real)
+            #4) de même pour d_B
+            trainBx, trainBY = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
+            loss_d_B, acc_d_B = d_B.train_on_batch(trainBx, trainBY)
+
+            
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
         print("loss_gen_A ({}): {}".format(training_model_gen_A.metrics_names,loss_gen_A))
@@ -334,7 +333,18 @@ def show_result_network(X):
     show_images(data, np.array([]))
 
 def test(img, gen, dcorrect, dautre):
-    show_images(img, gen.predict(img), dcorrect.predict(img), dautre.predict(img))
+    #On va créer les sous titres
+    #Pour les img originales du monde correct
+    titresimg, titrestransf = [],[]
+    predd1, predd2 = dcorrect(img), dautre(img)
+    for i in range(img.shape[0]):
+        titresimg.append("D1 = {} | D2 = {}".format(predd1[i], predd2[i]))
+    predd1, predd2 = dcorrect(gen.predict(img)), dautre(gen.predict(img))
+    for i in range(img.shape[0]):
+        titrestransf.append("D1 = {} | D2 = {}".format(predd1[i], predd2[i]))
+
+
+    show_images(img*127.5+127.5, gen.predict(img)*127.5+127.5, titresimg, titrestransf)
 
 def save(d_A, d_B, gen_A, gen_B):
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
@@ -381,5 +391,5 @@ gen_A, gen_B = create_generator(name="A"),create_generator(name="B")
 #On charge les poids
 load(d_A, d_B, gen_A, gen_B)
 
-essais()
-
+#essais()
+start_train()
