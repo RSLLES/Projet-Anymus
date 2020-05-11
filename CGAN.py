@@ -51,15 +51,22 @@ def load_data():
     XB = XB/127.5-1
     return XA,XB
 
-def show_images(dataA, dataB):
+def show_images(dataA, dataB, titleA = None, titleB = None):
     # plot source images
     for i in range(dataA.shape[0]):
-        plt.subplot(2, dataA.shape[0], 1 + i)
+        if titleA == None:
+            plt.subplot(2, dataA.shape[0], 1 + i)
+        else:
+            plt.subplot(2, dataA.shape[0], 1 + i, title=str(titleA[i]))
         plt.axis('off')
         plt.imshow(dataA[i].astype('uint8'))
     # plot target image
     for i in range(dataB.shape[0]):
-        plt.subplot(2, dataB.shape[0], 1 + dataA.shape[0] + i)
+        if titleB == None:
+            plt.subplot(2, dataB.shape[0], 1 + dataA.shape[0] + i)
+        else:
+            plt.subplot(2, dataB.shape[0], 1 + dataA.shape[0] + i,title=str(titleB[i]))
+        
         plt.axis('off')
         plt.imshow(dataB[i].astype('uint8'))
     plt.show()
@@ -134,7 +141,6 @@ def create_discriminator(dim = 256, depht = 32, name=""):
 
     #On compile
     D.compile(loss="binary_crossentropy", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), metrics=['accuracy'])
-    D.summary()
     return D
 
 def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
@@ -177,7 +183,6 @@ def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
     g = keras.layers.Conv2DTranspose(3, (7,7), strides=(2,2), padding="same")(g)
     g = keras.layers.Activation("tanh")(g)
     M = keras.Model(input_layer, g, name="gen_{}".format(name))
-    M.summary()
     return M
 
 
@@ -241,7 +246,6 @@ def create_training_model_gen(gen_A, d_A, gen_B, dim = 256, name=""):
     #mae veut dire mean absolute error -> c'est la norme 1, donc on vise a minimiser sum |y_k-x_k| pour chaque pixel de l'image
     #ce choix vient d'un REX du papier
     model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 2, 2, 1], optimizer=opt)
-    model.summary()
     return model
 
 
@@ -327,7 +331,10 @@ def screenshoot(X, gen, epoch):
 
 def show_result_network(X):
     data = (X+1)*127.5
-    show_images(X, np.array([]))
+    show_images(data, np.array([]))
+
+def test(img, gen, dcorrect, dautre):
+    show_images(img, gen.predict(img), dcorrect.predict(img), dautre.predict(img))
 
 def save(d_A, d_B, gen_A, gen_B):
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
@@ -353,6 +360,15 @@ def load(d_A, d_B, gen_A, gen_B):
 ########## Let's go baby #########
 ##################################
 
+def start_train():
+    training_model_gen_A, training_model_gen_B = create_training_model_gen(gen_A, d_A, gen_B, name="A"), create_training_model_gen(gen_B, d_B, gen_A, name="B")
+    #Et on y va
+    train(  gen_A, d_A, gen_B, d_B, training_model_gen_A, training_model_gen_B,  XA, XB)
+
+def essais():
+    img = XB[(0,5,10),...]
+    test(img, gen_A, d_B, d_A)
+
 dim = 256
 XA,XB = load_data()
 
@@ -365,8 +381,5 @@ gen_A, gen_B = create_generator(name="A"),create_generator(name="B")
 #On charge les poids
 load(d_A, d_B, gen_A, gen_B)
 
-training_model_gen_A, training_model_gen_B = create_training_model_gen(gen_A, d_A, gen_B, name="A"), create_training_model_gen(gen_B, d_B, gen_A, name="B")
-#Et on y va
-train(  gen_A, d_A, gen_B, d_B, 
-            training_model_gen_A, training_model_gen_B,  
-            XA, XB)
+essais()
+
