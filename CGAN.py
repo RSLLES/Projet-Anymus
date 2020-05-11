@@ -2,6 +2,7 @@ import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
 from os.path import isfile
+from os import remove
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
@@ -74,6 +75,8 @@ def save_images(dataA, dataB, filename):
         plt.subplot(2, dataB.shape[0], 1 + dataA.shape[0] + i)
         plt.axis('off')
         plt.imshow(dataB[i].astype('uint8'))
+    if isfile(filename):
+        remove(filename)
     plt.savefig(filename)
 
 
