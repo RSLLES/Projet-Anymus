@@ -1,6 +1,4 @@
-import tensorflow as tf
-import tensorflow.keras as keras
-import tensorflow
+import keras
 import numpy as np
 from os.path import isfile
 from os import remove
@@ -13,6 +11,7 @@ from os import listdir
 from time import time
 from tqdm import tqdm
 
+print(keras.__version__)
 
 ########################################
 ########## Gestion des images ##########
@@ -141,7 +140,7 @@ def create_discriminator(dim = 256, depht = 32, name=""):
     D.add(keras.layers.Dense(1, activation="sigmoid"))
 
     #On compile
-    D.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), metrics=['accuracy'])
+    D.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5))
     return D
 
 def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
@@ -216,40 +215,40 @@ def create_small_training_model_gen(gen, d, dim=256):
     model.compile(loss='mse', optimizer=opt)
     return model
 
-def create_training_model_gen(gen_A, d_A, gen_B, dim = 256, name=""):
+def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name=""):
     """
     Cette méthode combine les différents réseau pour en déduire des fonctions de loss que nous allons chercher a minimiser
-    Ici, c'est seulement gen_A qui va être minimisé
+    Ici, c'est seulement gen_1_vers_2 qui va être entrainé
     """
 
-    #Entrainement 1 : On veut que gen_a soit capable de tromper le discriminateur
-    #On entraine donc le reseau gen_a -> d_A en cherchant à obtenir 1 à chaque fois
-    input_from_B = keras.layers.Input(shape=(dim,dim,3))
+    #On desactive tout sauf gen_1_vers_2
+    gen_1_vers_2.trainable = True
+    gen_2_vers_1.trainable = False
+    d_2.trainable = False
 
-    gen_A_Out = gen_A(input_from_B)
-    d_A_Out = d_A(gen_A_Out)
+    #Voila les deux entrees de ce model : une entree du monde 1 et une autre du monde 2
+    input_from_1 = keras.layers.Input(shape=(dim,dim,3))
+    input_from_2 = keras.layers.Input(shape=(dim,dim,3))
 
-    #Entrainement 2 et 3 : On veut entrainer le gen_A pour que gen_A = gen_B^-1
-    #Cela se traduit par minimisé gen_A(gen_B) et gen_B(gen_A) avec comme objectif l'imagine initiale
-    out_direct = gen_B(gen_A_Out)
+    #Entrainement 1 : On veut que gen_1_vers_2 soit capable de tromper le discriminateur d2
+    #On entraine donc le reseau d_2(gen_1_vers_2(input_from_1)) en cherchant à obtenir 1 à chaque fois
+    pred_d2 = d_2(gen_1_vers_2(input_from_1))
 
-    input_from_A = keras.layers.Input(shape=(dim,dim,3))
-    gen_B_Out = gen_B(input_from_A)
-    out_indirect = gen_A(gen_B_Out)
+    #Entrainement 2 et 3 : L'objectif est que logiquement, gen_1_vers_2 = gen_2_vers_1^-1
+    #Donc on va s'entrainer sur deux boucles, gen_1_vers_2(gen_2_vers_1(input_from_2)) = input_from_2
+    # et dans l'autre sens gen_2_vers_1(gen_1_vers_2(input_1)) = input_1
+    cycle_1 = gen_2_vers_1(gen_1_vers_2(input_from_1))
+    cycle_2 = gen_1_vers_2(gen_2_vers_1(input_from_2))
 
-    #Entrainement 4 : Enfin, comme gen_A est sensé transformer une image du monde B vers le monde A,
-    #on veut que si on lui donne deja une image du monde A, alors gen_A(A) = A
-    out_identity = gen_A(input_from_A)
+    #Entrainement 4 : Enfin, une image du monde 2 ne doit pas changée par gen_1_vers_2
+    identity_2 = gen_1_vers_2(input_from_2)
 
     #Ces 4 entrainements sont mis ensemble pour etre tous traités en même temps
-    model = keras.Model([input_from_A, input_from_B], [d_A_Out, out_direct, out_indirect, out_identity],name="train_gen_{}".format(name))
+    model = keras.Model([input_from_1, input_from_2], [pred_d2, cycle_1, cycle_2, identity_2],name="train_gen_{}".format(name))
     opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
-    #On prend comme fonction de loss la somme pondéré des 4 fonctions de loss, en donnant plus de poids
-    #au entrainement cycle direct et indirect, car d'après le papier ce sont les plus performants
-    #mse veut dire mean square error -> c'est la norme 2 qui est utilisé comme loss function pour l'entrainement
-    #sur le discriminateur qui vaut 1 (donc on veut minimiser sum (d_A_out-1)^2)
-    #mae veut dire mean absolute error -> c'est la norme 1, donc on vise a minimiser sum |y_k-x_k| pour chaque pixel de l'image
-    #ce choix vient d'un REX du papier
+
+    #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
+    # (on donne plus d'importance aux cycles d'après le papier)
     model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 2, 2, 1], optimizer=opt)
     return model
 
@@ -261,70 +260,63 @@ def get_random_element(X, n):
     return X[np.random.randint(0,X.shape[0], n),...]
 
 
-def train(  gen_A, d_A, gen_B, d_B, 
-            training_model_gen_A, training_model_gen_B,  
+def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B, 
+            training_model_gen_A_vers_B, training_model_gen_B_vers_A,  
             XA, XB):
 
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 15, min(XA.shape[0], XB.shape[0])
-    n_batch_by_epochs = int(N_data/n_batch)
+    n_epochs, n_batch, N_data = 1000, 15, max(XA.shape[0], XB.shape[0])
+    n_run_by_epochs = int(N_data/n_batch)
 
-    #On desactive tout au début de l'entrainement
-    gen_A.trainable, gen_B.trainable, d_A.trainable, d_B.trainable = False, False, False, False
-
-    #Et la boucle tourne a tournée
-
+    #Et la boucle qui tourne a tournée (ty Ribery)
     for i_epo in range(n_epochs):
         print("#######################################")
         print("######## Début epoch {}/{} ############".format(i_epo, n_epochs))
         print("#######################################")
 
-        for i in tqdm(range(n_batch_by_epochs)):
+        for i in tqdm(range(n_run_by_epochs)):
             #Construction du jeu de données a utiliser pour cette iteration de l'entrainement
-            xa_real, ya_real = get_random_element(XA, n_batch), np.ones(n_batch)
-            xb_real, yb_real = get_random_element(XB, n_batch), np.ones(n_batch)
+            xa_real, ya_real = get_random_element(XA, n_batch), np.ones(n_batch)[...,np.newaxis]
+            xb_real, yb_real = get_random_element(XB, n_batch), np.ones(n_batch)[...,np.newaxis]
 
-            xa_fake, ya_fake = gen_A.predict(xb_real), np.zeros(n_batch)
-            xb_fake, yb_fake = gen_B.predict(xa_real), np.zeros(n_batch)
+            xa_fake, ya_fake = gen_B_vers_A.predict(xb_real), np.zeros(n_batch)[...,np.newaxis]
+            xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), np.zeros(n_batch)[...,np.newaxis]
 
             #Entrainements
-            #1) On entraine gen_a : [input_from_A, input_from_B] -> [d_A_Out, out_direct, out_indirect, out_identity]
-            gen_A.trainable = True
-            #loss_gen_A = training_model_gen_A.train_on_batch([xa_real, xb_real], [ya_real, xb_real, xa_real, xa_real])
-            loss_gen_A = training_model_gen_A.train_on_batch(xb_real, yb_real)
-            gen_A.trainable = False
+            #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
+            #on avait gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
+            loss_gen_A_vers_B = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, xa_real, xb_real, xb_real])
 
-            #2) On entraine gen_b : [input_from_B, input_from_A] -> [d_B_Out, out_direct, out_indirect, out_identity]
-            gen_B.trainable = True
-            #loss_gen_B= training_model_gen_B.train_on_batch([xb_real, xa_real], [yb_real, xa_real, xb_real, xb_real])
-            loss_gen_B = training_model_gen_B.train_on_batch(xa_real, ya_real)
-            gen_B.trainable = False
+            #2) Sur le meme model, on entraine gen_B_vers_A
+            # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
+            loss_gen_B_vers_A = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, xb_real, xa_real, xa_real])
 
-            #3) On entraine d_a : input_from_A -> y
+            #3) On entraine d_A : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
-            trainAX, trainAY = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
-            d_A.trainable = True
-            loss_d_A, acc_d_A = d_A.train_on_batch(trainAX, trainAY)
-            d_A.trainable = False
+            xa, ya = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
+            loss_d_A = d_A.train_on_batch(xa, ya)
 
             #4) de même pour d_B
-            trainBX, trainBY = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
-            d_B.trainable = True
-            loss_d_B, acc_d_B = d_B.train_on_batch(trainBX, trainBY)
-            d_B.trainable = False
+            xb, yb = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
+            loss_d_B = d_B.train_on_batch(xb, yb)
 
-            
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
-        print("loss_gen_A ({}): {}".format(training_model_gen_A.metrics_names,loss_gen_A))
-        print("loss_gen_B ({}): {}".format(training_model_gen_B.metrics_names,loss_gen_B))
-        print("loss_d_A : {} | acc_d_A : {}".format(loss_d_A, acc_d_A))
-        print("loss_d_B : {} | acc_d_B : {}".format(loss_d_B, acc_d_B))
-        screenshoot(XA, gen_B, i_epo)
+        print("Bilan de l'epoch :")
+        print("loss gen_A_vers_B : {}".format(loss_gen_A_vers_B[0]))
+        print("loss gen_B_vers_A : {}".format(loss_gen_B_vers_A[0]))
+        print("loss d_A : {}".format(loss_d_A[0]))
+        print("loss d_B : {}".format(loss_d_B[0]))
+
+        #Toutes les 5 epochs, on fait un sourire
+        if (i_epo+1)%5 == 0:
+            screenshoot(XA, gen_A_vers_B, str(i_epo) + "_A_vers_B")
+            screenshoot(XB, gen_B_vers_A, str(i_epo) + "_B_vers_A")
+        
         #On lache notre meilleure sauvegarde
-        save(d_A, d_B, gen_A, gen_B)
+        save(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
 
 
 def screenshoot(X, gen, epoch):
@@ -351,39 +343,32 @@ def test(img, gen, dcorrect, dautre):
 
     show_images(img*127.5+127.5, gen.predict(img)*127.5+127.5, titresimg, titrestransf)
 
-def save(d_A, d_B, gen_A, gen_B):
+def save(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
     d_A.save_weights("Weights/d_A.h5")
     d_B.save_weights("Weights/d_B.h5")
-    gen_A.save_weights("Weights/gen_A.h5")
-    gen_B.save_weights("Weights/gen_B.h5")
+    gen_A_vers_B.save_weights("Weights/gen_A_vers_B.h5")
+    gen_B_vers_A.save_weights("Weights/gen_B_vers_A.h5")
 
-def load(d_A, d_B, gen_A, gen_B):
+def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
-    if (isfile("Weights/d_A.h5") and isfile("Weights/gen_A.h5") 
-    and isfile("Weights/d_B.h5") and isfile("Weights/gen_B.h5")):
+    if (isfile("Weights/d_A.h5") and isfile("Weights/gen_A_vers_B.h5") 
+    and isfile("Weights/d_B.h5") and isfile("Weights/gen_B_vers_A.h5")):
         d_A.load_weights("Weights/d_A.h5")
         d_B.load_weights("Weights/d_B.h5")
-        gen_A.load_weights("Weights/gen_A.h5")
-        gen_B.load_weights("Weights/gen_B.h5")
+        gen_A_vers_B.load_weights("Weights/gen_A_vers_B.h5")
+        gen_B_vers_A.load_weights("Weights/gen_B_vers_A.h5")
         print("Weights loaded")
     else:
         print("Missing weights files detected. Starting from scratch")
+
+
 
 
 ##################################
 ########## Let's go baby #########
 ##################################
 
-def start_train():
-    #training_model_gen_A, training_model_gen_B = create_training_model_gen(gen_A, d_A, gen_B, name="A"), create_training_model_gen(gen_B, d_B, gen_A, name="B")
-    training_model_gen_A, training_model_gen_B = create_small_training_model_gen(gen_A, d_A), create_small_training_model_gen(gen_B, d_B)
-    #Et on y va
-    train(  gen_A, d_A, gen_B, d_B, training_model_gen_A, training_model_gen_B,  XA, XB)
-
-def essais():
-    img = XB[(0,5,10),...]
-    test(img, gen_A, d_B, d_A)
 
 dim = 256
 XA,XB = load_data()
@@ -392,10 +377,15 @@ XA,XB = load_data()
 d_A, d_B = create_discriminator(name="A"), create_discriminator(name="B")
 
 #Au tours des generateurs
-gen_A, gen_B = create_generator(name="A"),create_generator(name="B")
+gen_A_vers_B, gen_B_vers_A = create_generator(name="A_vers_B"), create_generator(name="B_vers_A")
 
 #On charge les poids
-load(d_A, d_B, gen_A, gen_B)
+load(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
 
-#essais()
-start_train()
+#On creer les training model
+#gen_1_vers_2 : create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name="")
+training_model_gen_A_vers_B = create_training_model_gen(gen_A_vers_B, d_B, gen_B_vers_A, name="A_vers_B")
+training_model_gen_B_vers_A = create_training_model_gen(gen_B_vers_A, d_A, gen_A_vers_B, name="B_vers_A")
+
+#Et on y va
+train(gen_A_vers_B, d_A, gen_B_vers_A, d_B, training_model_gen_A_vers_B, training_model_gen_B_vers_A,  XA, XB)
