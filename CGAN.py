@@ -209,7 +209,7 @@ def create_resnet(n_filters, T):
 ############################################################
 
 def create_small_training_model_gen(gen, d, dim=256):
-    input_layer = keras.layers.Input(sgape=(dim,dim,3))
+    input_layer = keras.layers.Input(shape=(dim,dim,3))
     output_layer = d(gen(input_layer))
     model = keras.Model(input_layer, output_layer)
     opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
