@@ -295,12 +295,15 @@ def train(  gen_A, d_A, gen_B, d_B,
 
             #3) On entraine d_a : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
-            loss_d_A, acc_d_A = d_A.train_on_batch(xa_real, ya_real)
-            loss_d_B, acc_d_B = d_B.train_on_batch(xa_fake, ya_fake)
+            loss_d_A_real, acc_d_A_real = d_A.train_on_batch(xa_real, ya_real)
+            loss_d_A_fake, acc_d_A_fake = d_A.train_on_batch(xa_fake, ya_fake)
+            #On calcul alors la moyenne pour avoir la loss
+            loss_d_A, acc_d_A = 0.5*(loss_d_A_fake+loss_d_A_real), 0.5*(acc_d_A_fake+acc_d_A_real)
 
-            #4) On entraine d_b
-            d_A.train_on_batch(xb_real, yb_real)
-            d_B.train_on_batch(xb_fake, yb_fake)
+            #4) On entraine d_b de la meme facon
+            loss_d_B_real, acc_d_B_real = d_B.train_on_batch(xb_real, yb_real)
+            loss_d_B_fake, acc_d_B_fake = d_B.train_on_batch(xb_fake, yb_fake)
+            loss_d_B, acc_d_B = 0.5*(loss_d_B_fake+loss_d_B_real), 0.5*(acc_d_B_fake+acc_d_B_real)
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
         print("loss_gen_A ({}): {}".format(training_model_gen_A.metrics_names,loss_gen_A))
@@ -325,6 +328,13 @@ def save(d_A, d_B, gen_A, gen_B):
     gen_A.save_weights("Weights/gen_A.h5")
     gen_B.save_weights("Weights/gen_B.h5")
 
+def load(d_A, d_B, gen_A, gen_B):
+    """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
+    d_A.load_weights("Weights/d_A.h5")
+    d_B.load_weights("Weights/d_B.h5")
+    gen_A.load_weights("Weights/gen_A.h5")
+    gen_B.load_weights("Weights/gen_B.h5")
+
 
 ##################################
 ########## Let's go baby #########
@@ -338,6 +348,10 @@ d_A, d_B = create_discriminator(name="A"), create_discriminator(name="B")
 
 #Au tours des generateurs
 gen_A, gen_B = create_generator(name="A"),create_generator(name="B")
+
+#On charge les poids
+load(d_A, d_B, gen_A, gen_B)
+
 training_model_gen_A, training_model_gen_B = create_training_model_gen(gen_A, d_A, gen_B, name="A"), create_training_model_gen(gen_B, d_B, gen_A, name="B")
 #Et on y va
 train(  gen_A, d_A, gen_B, d_B, 
