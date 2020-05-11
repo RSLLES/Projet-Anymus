@@ -321,6 +321,10 @@ def screenshoot(X, gen, epoch):
     data2 = (gen.predict(X[[0,1,2],...])+1)*127.5
     save_images(data1, data2, "Progression/epoch{}.png".format(epoch))
 
+def show_result_network(X):
+    data = (X+1)*127.5
+    show_images(X, np.array([]))
+
 def save(d_A, d_B, gen_A, gen_B):
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
     d_A.save_weights("Weights/d_A.h5")
