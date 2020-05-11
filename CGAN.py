@@ -267,7 +267,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 15, max(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 20, max(XA.shape[0], XB.shape[0])
     n_run_by_epochs = int(N_data/n_batch)
 
     #Et la boucle qui tourne a tournée (ty Ribery)
@@ -307,11 +307,11 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
         print("Bilan de l'epoch :")
         print("loss gen_A_vers_B : {}".format(loss_gen_A_vers_B[0]))
         print("loss gen_B_vers_A : {}".format(loss_gen_B_vers_A[0]))
-        print("loss d_A : {}".format(loss_d_A[0]))
-        print("loss d_B : {}".format(loss_d_B[0]))
+        print("loss d_A : {}".format(loss_d_A))
+        print("loss d_B : {}".format(loss_d_B))
 
         #Toutes les 5 epochs, on fait un sourire
-        if (i_epo+1)%5 == 0:
+        if (i_epo)%5 == 0:
             screenshoot(XA, gen_A_vers_B, str(i_epo) + "_A_vers_B")
             screenshoot(XB, gen_B_vers_A, str(i_epo) + "_B_vers_A")
         
