@@ -1,5 +1,6 @@
 import tensorflow as tf
 import tensorflow.keras as keras
+import tensorflow
 import numpy as np
 from os.path import isfile
 from os import remove
@@ -207,6 +208,14 @@ def create_resnet(n_filters, T):
 ########## Création des structures d'entrainement ##########
 ############################################################
 
+def create_small_training_model_gen(gen, d, dim=256):
+    input_layer = keras.layers.Input(sgape=(dim,dim,3))
+    output_layer = d(gen(input_layer))
+    model = keras.Model(input_layer, output_layer)
+    opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+    model.compile(loss='mse', optimizer=opt)
+    return model
+
 def create_training_model_gen(gen_A, d_A, gen_B, dim = 256, name=""):
     """
     Cette méthode combine les différents réseau pour en déduire des fonctions de loss que nous allons chercher a minimiser
@@ -259,7 +268,7 @@ def train(  gen_A, d_A, gen_B, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 15, min(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 3, min(XA.shape[0], XB.shape[0])
     n_batch_by_epochs = int(N_data/n_batch)
 
     #On desactive tout au début de l'entrainement
@@ -283,12 +292,14 @@ def train(  gen_A, d_A, gen_B, d_B,
             #Entrainements
             #1) On entraine gen_a : [input_from_A, input_from_B] -> [d_A_Out, out_direct, out_indirect, out_identity]
             gen_A.trainable = True
-            loss_gen_A = training_model_gen_A.train_on_batch([xa_real, xb_real], [ya_real, xb_real, xa_real, xa_real])
+            #loss_gen_A = training_model_gen_A.train_on_batch([xa_real, xb_real], [ya_real, xb_real, xa_real, xa_real])
+            loss_gen_A = training_model_gen_A.train_on_batch(xb_real, yb_real)
             gen_A.trainable = False
 
             #2) On entraine gen_b : [input_from_B, input_from_A] -> [d_B_Out, out_direct, out_indirect, out_identity]
             gen_B.trainable = True
-            loss_gen_B= training_model_gen_B.train_on_batch([xb_real, xa_real], [yb_real, xa_real, xb_real, xb_real])
+            #loss_gen_B= training_model_gen_B.train_on_batch([xb_real, xa_real], [yb_real, xa_real, xb_real, xb_real])
+            loss_gen_B = training_model_gen_B.train_on_batch(xa_real, ya_real)
             gen_B.trainable = False
 
             #3) On entraine d_a : input_from_A -> y
@@ -365,7 +376,8 @@ def load(d_A, d_B, gen_A, gen_B):
 ##################################
 
 def start_train():
-    training_model_gen_A, training_model_gen_B = create_training_model_gen(gen_A, d_A, gen_B, name="A"), create_training_model_gen(gen_B, d_B, gen_A, name="B")
+    #training_model_gen_A, training_model_gen_B = create_training_model_gen(gen_A, d_A, gen_B, name="A"), create_training_model_gen(gen_B, d_B, gen_A, name="B")
+    training_model_gen_A, training_model_gen_B = create_small_training_model_gen(gen_A, d_A), create_small_training_model_gen(gen_B, d_B)
     #Et on y va
     train(  gen_A, d_A, gen_B, d_B, training_model_gen_A, training_model_gen_B,  XA, XB)
 
