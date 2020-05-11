@@ -212,10 +212,6 @@ def create_training_model_gen(gen_A, d_A, gen_B, dim = 256, name=""):
     Cette méthode combine les différents réseau pour en déduire des fonctions de loss que nous allons chercher a minimiser
     Ici, c'est seulement gen_A qui va être minimisé
     """
-    #Seulement gen_A doit etre entrainé, les autres non
-    gen_A.trainable = True
-    d_A.trainable = False
-    gen_B.trainable = False
 
     #Entrainement 1 : On veut que gen_a soit capable de tromper le discriminateur
     #On entraine donc le reseau gen_a -> d_A en cherchant à obtenir 1 à chaque fois
@@ -252,21 +248,8 @@ def create_training_model_gen(gen_A, d_A, gen_B, dim = 256, name=""):
 ##################################
 ########## Entrainement ##########
 ##################################
-
-
-def generate_real_sample(X, n_batch):
-    """Retourne un set de données a utiliser pour une itération de l'entrainement contenant des vrais données
-    issue de X"""
-    x = X[np.random.randint(0,X.shape[0], n_batch),...]
-    y = np.ones(n_batch)
-    return x,y
-
-def generate_fake_sample(X, gen, n_batch):
-    """Retourne un set de données a utiliser pour une itération de l'entrainement contenant des fausses données
-    créés avec le gen dans le bon monde a partir d'image de l'autre"""
-    x = gen.predict(X[np.random.randint(0,X.shape[0], n_batch),...])
-    y = np.zeros(n_batch)
-    return x,y
+def get_random_element(X, n):
+    return X[np.random.randint(0,X.shape[0], n),...]
 
 
 def train(  gen_A, d_A, gen_B, d_B, 
@@ -279,6 +262,9 @@ def train(  gen_A, d_A, gen_B, d_B,
     n_epochs, n_batch, N_data = 1000, 15, min(XA.shape[0], XB.shape[0])
     n_batch_by_epochs = int(N_data/n_batch)
 
+    #On desactive tout au début de l'entrainement
+    gen_A.trainable, gen_B.trainable, d_A.trainable, d_B.trainable = False, False, False, False
+
     #Et la boucle tourne a tournée
 
     for i_epo in range(n_epochs):
@@ -288,27 +274,35 @@ def train(  gen_A, d_A, gen_B, d_B,
 
         for i in tqdm(range(n_batch_by_epochs)):
             #Construction du jeu de données a utiliser pour cette iteration de l'entrainement
-            xa_real, ya_real = generate_real_sample(XA, n_batch)
-            xb_real, yb_real = generate_real_sample(XB, n_batch)
+            xa_real, ya_real = get_random_element(XA, n_batch), np.ones(n_batch)
+            xb_real, yb_real = get_random_element(XB, n_batch), np.ones(n_batch)
 
-            xa_fake, ya_fake = generate_fake_sample(XB, gen_A, n_batch)
-            xb_fake, yb_fake = generate_fake_sample(XA, gen_B, n_batch)
+            xa_fake, ya_fake = gen_A.predict(xb_real), np.zeros(n_batch)
+            xb_fake, yb_fake = gen_A.predict(xa_real), np.zeros(n_batch)
 
             #Entrainements
             #1) On entraine gen_a : [input_from_A, input_from_B] -> [d_A_Out, out_direct, out_indirect, out_identity]
+            gen_A.trainable = True
             loss_gen_A = training_model_gen_A.train_on_batch([xa_real, xb_real], [ya_real, xb_real, xa_real, xa_real])
+            gen_A.trainable = False
 
             #2) On entraine gen_b : [input_from_B, input_from_A] -> [d_B_Out, out_direct, out_indirect, out_identity]
+            gen_B.trainable = True
             loss_gen_B= training_model_gen_B.train_on_batch([xb_real, xa_real], [yb_real, xa_real, xb_real, xb_real])
+            gen_B.trainable = False
 
             #3) On entraine d_a : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
             trainAx, trainAY = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
+            d_A.trainable = True
             loss_d_A, acc_d_A = d_A.train_on_batch(trainAx, trainAY)
+            d_A.trainable = False
 
             #4) de même pour d_B
             trainBx, trainBY = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
+            d_B.trainable = True
             loss_d_B, acc_d_B = d_B.train_on_batch(trainBx, trainBY)
+            d_B.trainable = False
 
             
 
