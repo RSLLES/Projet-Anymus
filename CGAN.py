@@ -140,7 +140,7 @@ def create_discriminator(dim = 256, depht = 32, name=""):
     D.add(keras.layers.Dense(1, activation="sigmoid"))
 
     #On compile
-    D.compile(loss="binary_crossentropy", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), metrics=['accuracy'])
+    D.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), metrics=['accuracy'])
     return D
 
 def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
@@ -259,7 +259,7 @@ def train(  gen_A, d_A, gen_B, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 15, min(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 3, min(XA.shape[0], XB.shape[0])
     n_batch_by_epochs = int(N_data/n_batch)
 
     #On desactive tout au début de l'entrainement
