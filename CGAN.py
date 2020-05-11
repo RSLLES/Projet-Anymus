@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 import numpy as np
+from os.path import isfile
 
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
@@ -334,10 +335,15 @@ def save(d_A, d_B, gen_A, gen_B):
 
 def load(d_A, d_B, gen_A, gen_B):
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
-    d_A.load_weights("Weights/d_A.h5")
-    d_B.load_weights("Weights/d_B.h5")
-    gen_A.load_weights("Weights/gen_A.h5")
-    gen_B.load_weights("Weights/gen_B.h5")
+    if (isfile("Weights/d_A.h5") and isfile("Weights/gen_A.h5") 
+    and isfile("Weights/d_B.h5") and isfile("Weights/gen_B.h5")):
+        d_A.load_weights("Weights/d_A.h5")
+        d_B.load_weights("Weights/d_B.h5")
+        gen_A.load_weights("Weights/gen_A.h5")
+        gen_B.load_weights("Weights/gen_B.h5")
+        print("Weights loaded")
+    else:
+        print("Missing weights files detected. Starting from scratch")
 
 
 ##################################
