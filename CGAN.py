@@ -268,7 +268,7 @@ def train(  gen_A, d_A, gen_B, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 3, min(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 15, min(XA.shape[0], XB.shape[0])
     n_batch_by_epochs = int(N_data/n_batch)
 
     #On desactive tout au début de l'entrainement
