@@ -333,7 +333,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
         save(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
 
 def loss_info (r,loss) : 
-    return [str(r.metrics_name[i]) + " : " + str(loss[i]) for i in range(loss.shape[0])]
+    return [str(r.metrics_names[i]) + " : " + str(loss[i]) for i in range(loss.shape[0])]
 
 
 def screenshoot(X, gen, epoch):
