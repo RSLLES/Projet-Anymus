@@ -272,6 +272,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
     #Et la boucle qui tourne a tournée (ty Ribery)
     for i_epo in range(n_epochs):
+        print("")
         print("#######################################")
         print("######## Début epoch {}/{} ############".format(i_epo, n_epochs))
         print("#######################################")
@@ -288,15 +289,15 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), (np.zeros(n_batch)[...,np.newaxis]).astype(np.float32)
 
             #Entrainements
-            #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
-            #on avait gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
-            e1 = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, xa_real, xb_real, xb_real])
-            loss_gen_A_vers_B.append(np.array(e1))
-
             #2) Sur le meme model, on entraine gen_B_vers_A
             # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
             e2 = loss_gen_B_vers_A = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, xb_real, xa_real, xa_real])
             loss_gen_B_vers_A.append(np.array(e2))
+
+            #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
+            #on avait gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
+            e1 = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, xa_real, xb_real, xb_real])
+            loss_gen_A_vers_B.append(np.array(e1))
 
             #3) On entraine d_A : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
