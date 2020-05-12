@@ -140,7 +140,7 @@ def create_discriminator(dim = 256, depht = 32, name=""):
     D.add(keras.layers.Dense(1, activation="sigmoid"))
 
     #On compile
-    D.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5))
+    D.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), metrics=["accuracy"])
     return D
 
 def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
@@ -240,7 +240,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name="
     cycle_1 = gen_2_vers_1(gen_1_vers_2(input_from_1))
     cycle_2 = gen_1_vers_2(gen_2_vers_1(input_from_2))
 
-    #Entrainement 4 : Enfin, une image du monde 2 ne doit pas changée par gen_1_vers_2
+    #Entrainement 4 : Enfin, une image du monde 2 ne doit pas changer par gen_1_vers_2
     identity_2 = gen_1_vers_2(input_from_2)
 
     #Ces 4 entrainements sont mis ensemble pour etre tous traités en même temps
@@ -249,7 +249,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name="
 
     #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
     # (on donne plus d'importance aux cycles d'après le papier)
-    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 2, 2, 1], optimizer=opt)
+    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 2, 2, 1], optimizer=opt, metrics=["accuracy"])
     return model
 
 
@@ -267,7 +267,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 20, max(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 3, max(XA.shape[0], XB.shape[0])
     n_run_by_epochs = int(N_data/n_batch)
 
     #Et la boucle qui tourne a tournée (ty Ribery)
@@ -276,39 +276,53 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
         print("######## Début epoch {}/{} ############".format(i_epo, n_epochs))
         print("#######################################")
 
+        loss_gen_A_vers_B, loss_gen_B_vers_A = [],[]
+        loss_d_A, loss_d_B = [],[]
+
         for i in tqdm(range(n_run_by_epochs)):
             #Construction du jeu de données a utiliser pour cette iteration de l'entrainement
-            xa_real, ya_real = get_random_element(XA, n_batch), np.ones(n_batch)[...,np.newaxis]
-            xb_real, yb_real = get_random_element(XB, n_batch), np.ones(n_batch)[...,np.newaxis]
+            xa_real, ya_real = get_random_element(XA, n_batch), (np.ones(n_batch)[...,np.newaxis]).astype(np.float32)
+            xb_real, yb_real = get_random_element(XB, n_batch), (np.ones(n_batch)[...,np.newaxis]).astype(np.float32)
 
-            xa_fake, ya_fake = gen_B_vers_A.predict(xb_real), np.zeros(n_batch)[...,np.newaxis]
-            xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), np.zeros(n_batch)[...,np.newaxis]
+            xa_fake, ya_fake = gen_B_vers_A.predict(xb_real), (np.zeros(n_batch)[...,np.newaxis]).astype(np.float32)
+            xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), (np.zeros(n_batch)[...,np.newaxis]).astype(np.float32)
 
             #Entrainements
             #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
             #on avait gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
-            loss_gen_A_vers_B = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, xa_real, xb_real, xb_real])
+            e1 = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, xa_real, xb_real, xb_real])
+            loss_gen_A_vers_B.append(np.array(e1))
 
             #2) Sur le meme model, on entraine gen_B_vers_A
             # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
-            loss_gen_B_vers_A = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, xb_real, xa_real, xa_real])
+            e2 = loss_gen_B_vers_A = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, xb_real, xa_real, xa_real])
+            loss_gen_B_vers_A.append(np.array(e2))
 
             #3) On entraine d_A : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
             xa, ya = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
-            loss_d_A = d_A.train_on_batch(xa, ya)
+            e3 = d_A.train_on_batch(xa, ya)
+            loss_d_A.append(np.array(e3))
 
             #4) de même pour d_B
             xb, yb = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
-            loss_d_B = d_B.train_on_batch(xb, yb)
+            e4 = d_B.train_on_batch(xb, yb)
+            loss_d_B.append(np.array(e4))
 
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
+        #Calcul des moyennes au cours de l'epoch
+        avg_loss_gen_A_vers_B = sum(loss_gen_A_vers_B)/n_run_by_epochs
+        avg_loss_gen_B_vers_A = sum(loss_gen_B_vers_A)/n_run_by_epochs
+        avg_loss_d_A = sum(loss_d_A)/n_run_by_epochs
+        avg_loss_d_B = sum(loss_d_B)/n_run_by_epochs
+
+
         print("Bilan de l'epoch :")
-        print("loss gen_A_vers_B : {}".format(loss_gen_A_vers_B[0]))
-        print("loss gen_B_vers_A : {}".format(loss_gen_B_vers_A[0]))
-        print("loss d_A : {}".format(loss_d_A))
-        print("loss d_B : {}".format(loss_d_B))
+        print("loss gen_A_vers_B : {}".format(loss_info(gen_A_vers_B, avg_loss_gen_A_vers_B)))
+        print("loss gen_B_vers_A : {}".format(loss_info(gen_B_vers_A, avg_loss_gen_B_vers_A)))
+        print("loss d_A : {}".format(loss_info(d_A, avg_loss_d_A)))
+        print("loss d_B : {}".format(loss_info(d_B, avg_loss_d_B)))
 
         #Toutes les 5 epochs, on fait un sourire
         if (i_epo)%5 == 0:
@@ -317,6 +331,9 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
         
         #On lache notre meilleure sauvegarde
         save(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
+
+def loss_info (r,loss) : 
+    return [str(r.metrics_name[i]) + " : " + str(loss[i]) for i in range(loss.shape[0])]
 
 
 def screenshoot(X, gen, epoch):
