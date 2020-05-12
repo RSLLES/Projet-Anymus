@@ -402,8 +402,9 @@ load(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
 
 #On creer les training model
 #gen_1_vers_2 : create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name="")
-training_model_gen_A_vers_B = create_training_model_gen(gen_A_vers_B, d_B, gen_B_vers_A, name="A_vers_B")
+#swapped
 training_model_gen_B_vers_A = create_training_model_gen(gen_B_vers_A, d_A, gen_A_vers_B, name="B_vers_A")
+training_model_gen_A_vers_B = create_training_model_gen(gen_A_vers_B, d_B, gen_B_vers_A, name="A_vers_B")
 
 #Et on y va
 train(gen_A_vers_B, d_A, gen_B_vers_A, d_B, training_model_gen_A_vers_B, training_model_gen_B_vers_A,  XA, XB)
