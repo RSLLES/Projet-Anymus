@@ -8,6 +8,7 @@ import urllib.request
 i_page_debut = 0
 n_pages_a_scrap = 10000
 urls = ["https://myanimelist.net/character.php?limit={}".format(50*i) for i in range(i_page_debut, n_pages_a_scrap)]
+i = 0
 
 for url in urls:
     page = requests.get(url)
@@ -15,9 +16,13 @@ for url in urls:
     all_characters = soup.find_all("tr", {"class": "ranking-list"})
 
     for chara in all_characters:
-        bio = chara.find("td", {"class" : "people"})
-        small_image_link, name = bio.find("img")['data-src'], bio.find("img")['alt']
-        print(name)
-        code, name = small_image_link.split('/')[7],small_image_link.split('/')[8].split('?')[0]
-        big_image_link = "https://cdn.myanimelist.net/images/characters/{}/{}".format(code, name)
-        urllib.request.urlretrieve(big_image_link, "Manga/Data/{}-{}.jpg".format(code, name))
+        i+=1
+        try:
+            bio = chara.find("td", {"class" : "people"})
+            small_image_link, name = bio.find("img")['data-src'], bio.find("img")['alt']
+            print("[{}] {}".format(i,name))
+            code, name = small_image_link.split('/')[7],small_image_link.split('/')[8].split('?')[0]
+            big_image_link = "https://cdn.myanimelist.net/images/characters/{}/{}".format(code, name)
+            urllib.request.urlretrieve(big_image_link, "Manga/Data/{}-{}".format(code, name))
+        except:
+            print("ERREUR")
