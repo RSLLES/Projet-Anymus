@@ -158,18 +158,18 @@ def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
 
     #1] Conv; dim*dim*3 -> dim/2*dim/2*depht
     g = keras.layers.Conv2D(depht, (7,7), strides=(2,2), padding="same")(input_layer)
-    g = keras.layers.BatchNormalization()(g)
-    g = keras.layers.Activation("relu")(g)
+    g = InstanceNormalization(axis=-1)(g)
+    g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
     #2] Conv; dim/2*dim/2*depht -> dim/4*dim/4*2*depht
     g = keras.layers.Conv2D(2*depht, (3,3), strides=(2,2), padding="same")(g)
-    g = keras.layers.BatchNormalization()(g)
-    g = keras.layers.Activation("relu")(g)
+    g = InstanceNormalization(axis=-1)(g)
+    g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
     #3] Conv; dim/4*dim/4*2*depht -> dim/8*dim/8*4*depht
     g = keras.layers.Conv2D(4*depht, (3,3), strides=(2,2), padding="same")(g)
-    g = keras.layers.BatchNormalization()(g)
-    g = keras.layers.Activation("relu")(g)
+    g = InstanceNormalization(axis=-1)(g)
+    g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
     #Au milieu, on ajoute autant de resnet_block que l'on vezut
     for _ in range(n_resnet):
@@ -178,13 +178,13 @@ def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
     #On redéroule dans l'autre sens
     #4] ConvT; dim/8*dim/8*4*depht -> dim/4*dim/4*2*depht
     g = keras.layers.Conv2DTranspose(2*depht, (3,3), strides=(2,2), padding="same")(g)
-    g = keras.layers.BatchNormalization()(g)
-    g = keras.layers.Activation("relu")(g)
+    g = InstanceNormalization(axis=-1)(g)
+    g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
     #5] ConvT; dim/4*dim/4*2*depht -> dim/2*dim/2*depht
     g = keras.layers.Conv2DTranspose(depht, (3,3), strides=(2,2), padding="same", activation="relu")(g)
-    g = keras.layers.BatchNormalization()(g)
-    g = keras.layers.Activation("relu")(g)
+    g = InstanceNormalization(axis=-1)(g)
+    g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
     #6] ConvT; dim/2*dim/2*depht -> dim*dim*3
     g = keras.layers.Conv2DTranspose(3, (7,7), strides=(2,2), padding="same")(g)
@@ -195,17 +195,17 @@ def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
 
 def create_resnet(n_filters, T):
     N = keras.layers.Conv2D(n_filters, (3,3), strides=(1,1), padding="same")(T)
-    N = keras.layers.BatchNormalization()(N)
-    N = keras.layers.Activation("relu")(N)
+    N = InstanceNormalization(axis=-1)(N)
+    N = keras.layers.LeakyReLU(alpha=0.2)(N)
 
     N = keras.layers.Conv2D(n_filters, (3,3), strides=(1,1), padding="same")(N)
-    N = keras.layers.BatchNormalization()(N)
+    N = InstanceNormalization(axis=-1)(N)
 
     #On additionne l'entrée et la sortie (ce qui fait la particularité du RESNET)
     N = keras.layers.Add()([N, T])
 
     #Dernière fonction d'activation
-    N = keras.layers.Activation("relu")(N)
+    N = keras.layers.LeakyReLU(alpha=0.2)(N)
     return N
 
 
