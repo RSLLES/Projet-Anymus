@@ -267,7 +267,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 20, max(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 3, max(XA.shape[0], XB.shape[0])
     n_run_by_epochs = int(N_data/n_batch)
 
     #Et la boucle qui tourne a tournée (ty Ribery)
@@ -291,7 +291,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             #Entrainements
             #2) Sur le meme model, on entraine gen_B_vers_A
             # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
-            e2 = loss_gen_B_vers_A = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, xb_real, xa_real, xa_real])
+            e2 = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, xb_real, xa_real, xa_real])
             loss_gen_B_vers_A.append(np.array(e2))
 
             #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
