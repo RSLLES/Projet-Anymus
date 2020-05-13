@@ -116,7 +116,7 @@ def create_discriminator(dim = 256, depht = 32, name=""):
     """
     D = keras.models.Sequential(name="d_{}".format(name))
     #Layer 1 : Convolution avec un filtre de 4x4 qui se déplace de 2 pixels en 2 -> Division du nombre de pixel par 2; depht filtres utilisés
-    #On ajoute un BatchNormalization pour réduire les poids et éviter une explosion du gradient
+    #On ajoute un InstanceNormalization pour réduire les poids et éviter une explosion du gradient
     #1] Conv; dim*dim*3 -> dim/2*dim/2*depht
     D.add(keras.layers.Conv2D(depht, (4,4), strides=(2,2), padding="same", input_shape=(dim,dim,3)))
     D.add(InstanceNormalization(axis=-1))
@@ -274,8 +274,9 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 3, max(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 20, max(XA.shape[0], XB.shape[0])
     n_run_by_epochs = int(N_data/n_batch)
+    shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
     #Et la boucle qui tourne a tournée (ty Ribery)
     for i_epo in range(n_epochs):
@@ -286,8 +287,6 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
         loss_gen_A_vers_B, loss_gen_B_vers_A = [],[]
         loss_d_A, loss_d_B = [],[]
-
-        shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
         for i in tqdm(range(n_run_by_epochs)):
             #Construction du jeu de données a utiliser pour cette iteration de l'entrainement
