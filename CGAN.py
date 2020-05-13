@@ -3,6 +3,8 @@ import numpy as np
 from os.path import isfile
 from os import remove
 
+from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
+
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from keras_preprocessing.image import load_img
@@ -116,30 +118,35 @@ def create_discriminator(dim = 256, depht = 32, name=""):
     #Layer 1 : Convolution avec un filtre de 4x4 qui se déplace de 2 pixels en 2 -> Division du nombre de pixel par 2; depht filtres utilisés
     #On ajoute un BatchNormalization pour réduire les poids et éviter une explosion du gradient
     #1] Conv; dim*dim*3 -> dim/2*dim/2*depht
-    D.add(keras.layers.Conv2D(depht, (4,4), strides=(2,2), padding="same", activation="relu", input_shape=(dim,dim,3)))
-    D.add(keras.layers.BatchNormalization())
+    D.add(keras.layers.Conv2D(depht, (4,4), strides=(2,2), padding="same", input_shape=(dim,dim,3)))
+    D.add(InstanceNormalization(axis=-1))
+    D.add(keras.layers.LeakyReLU(alpha=0.2))
 
     #2] Conv; dim/2*dim/2*depht -> dim/4*dim/4*2*depht
-    D.add(keras.layers.Conv2D(2*depht, (4,4), strides=(2,2), padding="same", activation="relu"))
-    D.add(keras.layers.BatchNormalization())
+    D.add(keras.layers.Conv2D(2*depht, (4,4), strides=(2,2), padding="same"))
+    D.add(InstanceNormalization(axis=-1))
+    D.add(keras.layers.LeakyReLU(alpha=0.2))
 
     #3] Conv; dim/4*dim/4*2*depht -> dim/8*dim/8*4*depht
-    D.add(keras.layers.Conv2D(4*depht, (4,4), strides=(2,2), padding="same", activation="relu"))
-    D.add(keras.layers.BatchNormalization())
+    D.add(keras.layers.Conv2D(4*depht, (4,4), strides=(2,2), padding="same"))
+    D.add(InstanceNormalization(axis=-1))
+    D.add(keras.layers.LeakyReLU(alpha=0.2))
 
     #4] Conv; dim/8*dim/8*4*depht -> dim/16*dim/16*8*depht
-    D.add(keras.layers.Conv2D(8*depht, (4,4), strides=(2,2), padding="same", activation="relu"))
-    D.add(keras.layers.BatchNormalization())
+    D.add(keras.layers.Conv2D(8*depht, (4,4), strides=(2,2), padding="same"))
+    D.add(InstanceNormalization(axis=-1))
+    D.add(keras.layers.LeakyReLU(alpha=0.2))
 
     #5] Conv; dim/16*dim/16*8*depht -> dim/16*dim/16*8*depht
-    D.add(keras.layers.Conv2D(8*depht, (4,4), strides=(1,1), padding="same", activation="relu"))
-    D.add(keras.layers.BatchNormalization())
+    D.add(keras.layers.Conv2D(8*depht, (4,4), strides=(1,1), padding="same"))
+    D.add(InstanceNormalization(axis=-1))
+    D.add(keras.layers.LeakyReLU(alpha=0.2))
 
-    #6] Dense; dim/16*dim/16*8*depht -> 1
-    D.add(keras.layers.Flatten())
-    D.add(keras.layers.Dense(1, activation="sigmoid"))
+    #6] Con final; dim/16*dim/16*8*depht -> dim/16*dim/16*1
+    D.add(keras.layers.Conv2D(1, (4,4), strides=(1,1), padding="same"))
 
     #On compile
+    print("{} trainable before compile : {}".format(D.name, D.trainable))
     D.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), metrics=["accuracy"])
     return D
 
@@ -280,13 +287,15 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
         loss_gen_A_vers_B, loss_gen_B_vers_A = [],[]
         loss_d_A, loss_d_B = [],[]
 
+        shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
+
         for i in tqdm(range(n_run_by_epochs)):
             #Construction du jeu de données a utiliser pour cette iteration de l'entrainement
-            xa_real, ya_real = get_random_element(XA, n_batch), (np.ones(n_batch)[...,np.newaxis]).astype(np.float32)
-            xb_real, yb_real = get_random_element(XB, n_batch), (np.ones(n_batch)[...,np.newaxis]).astype(np.float32)
+            xa_real, ya_real = get_random_element(XA, n_batch), np.ones(shape_y).astype(np.float32)
+            xb_real, yb_real = get_random_element(XB, n_batch), np.ones(shape_y).astype(np.float32)
 
-            xa_fake, ya_fake = gen_B_vers_A.predict(xb_real), (np.zeros(n_batch)[...,np.newaxis]).astype(np.float32)
-            xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), (np.zeros(n_batch)[...,np.newaxis]).astype(np.float32)
+            xa_fake, ya_fake = gen_B_vers_A.predict(xb_real), np.zeros(shape_y).astype(np.float32)
+            xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), np.zeros(shape_y).astype(np.float32)
 
             #Entrainements
             #2) Sur le meme model, on entraine gen_B_vers_A
