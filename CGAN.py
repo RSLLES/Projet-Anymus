@@ -147,7 +147,7 @@ def create_discriminator(dim = 256, depht = 32, name=""):
 
     #On compile
     print("{} trainable before compile : {}".format(D.name, D.trainable))
-    D.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), metrics=["accuracy"])
+    D.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), loss_weights=[0.5], metrics=["accuracy"])
     return D
 
 def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
@@ -256,7 +256,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name="
 
     #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
     # (on donne plus d'importance aux cycles d'après le papier)
-    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 2, 2, 1], optimizer=opt, metrics=["accuracy"])
+    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 10, 10, 5], optimizer=opt, metrics=["accuracy"])
     return model
 
 
@@ -265,6 +265,27 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name="
 ##################################
 def get_random_element(X, n):
     return X[np.random.randint(0,X.shape[0], n),...]
+
+def upate_pool(existing_pool, new_images, pool_max_size=50):
+    """
+    Cette fonction tient un historique des dernières images générée, car d'après le document il est plus performant
+    d'entrener le générateur sur des images précédemment générées."""
+    selected = []
+    for img in new_images:
+        #Si le pool n'est pas encore rempli, on l'ajoute au pool
+        if (len(existing_pool) < pool_max_size):
+            existing_pool.append(img)
+            selected.append(img)
+        #Sinon une chance sur deux de l'utilisé, ou bien d'utilisé une vielle image
+        elif np.random.random() > 0.5 :
+            #On l'utilise mais on ne l'ajoute pas dans le pool
+            selected.append(img)
+        else:
+            #On utilise une ancienne image que l'on enleve du pool
+            index = np.random.randint(0,len(existing_pool))
+            selected.append(existing_pool[index])
+            existing_pool[index] = img
+    return np.asarray(selected)
 
 
 def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B, 
@@ -287,14 +308,15 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
         loss_gen_A_vers_B, loss_gen_B_vers_A = [],[]
         loss_d_A, loss_d_B = [],[]
+        poolA, poolB = [],[]
 
         for i in tqdm(range(n_run_by_epochs)):
             #Construction du jeu de données a utiliser pour cette iteration de l'entrainement
             xa_real, ya_real = get_random_element(XA, n_batch), np.ones(shape_y).astype(np.float32)
             xb_real, yb_real = get_random_element(XB, n_batch), np.ones(shape_y).astype(np.float32)
 
-            xa_fake, ya_fake = gen_B_vers_A.predict(xb_real), np.zeros(shape_y).astype(np.float32)
-            xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), np.zeros(shape_y).astype(np.float32)
+            xa_fake, ya_fake = upate_pool(poolA, gen_B_vers_A.predict(xb_real)), np.zeros(shape_y).astype(np.float32)
+            xb_fake, yb_fake = upate_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
 
             #Entrainements
             #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
