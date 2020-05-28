@@ -5,6 +5,8 @@ from os import remove
 
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
 
+from keras.utils.vis_utils import plot_model
+
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 from keras_preprocessing.image import load_img
@@ -112,43 +114,70 @@ def load_images(path, size=(256,256)):
 
 def create_discriminator(dim = 256, depht = 32, name=""):
     """
-    On change la structure par / à CGAN.py, voir pdf
+    On change la structure par / à CGAN.py, voir pdf page 6 figure 2
     """
-    D = keras.models.Sequential(name="d_{}".format(name))
+    input_layer = keras.layers.Input(shape=(dim,dim,3))
     #Layer 1 : Convolution avec un filtre de 4x4 qui se déplace de 2 pixels en 2 -> Division du nombre de pixel par 2; depht filtres utilisés
     #On ajoute un InstanceNormalization pour réduire les poids et éviter une explosion du gradient
-    #1] Conv; dim*dim*3 -> dim/2*dim/2*depht
-    D.add(keras.layers.Conv2D(depht, (4,4), strides=(2,2), padding="same", input_shape=(dim,dim,3)))
-    D.add(InstanceNormalization(axis=-1))
-    D.add(keras.layers.LeakyReLU(alpha=0.2))
+    #1] Conv; dim*dim*3 -> dim/2*dim/2*2depht
+    d = keras.layers.Conv2D(2*depht, (4,4), strides=(2,2), padding="same")(input_layer)
+    d = InstanceNormalization(axis=-1)(d)
+    d = keras.layers.LeakyReLU(alpha=0.2)(d)
 
-    #2] Conv; dim/2*dim/2*depht -> dim/4*dim/4*2*depht
-    D.add(keras.layers.Conv2D(2*depht, (4,4), strides=(2,2), padding="same"))
-    D.add(InstanceNormalization(axis=-1))
-    D.add(keras.layers.LeakyReLU(alpha=0.2))
+    #2] Conv; dim/2*dim/2*depht -> dim/4*dim/4*4*depht
+    d = keras.layers.Conv2D(4*depht, (4,4), strides=(2,2), padding="same")(d)
+    d = InstanceNormalization(axis=-1)(d)
+    d = keras.layers.LeakyReLU(alpha=0.2)(d)
 
-    #3] Conv; dim/4*dim/4*2*depht -> dim/8*dim/8*4*depht
-    D.add(keras.layers.Conv2D(4*depht, (4,4), strides=(2,2), padding="same"))
-    D.add(InstanceNormalization(axis=-1))
-    D.add(keras.layers.LeakyReLU(alpha=0.2))
+    #3] Conv; dim/4*dim/4*2*depht -> dim/8*dim/8*8*depht
+    d = keras.layers.Conv2D(8*depht, (4,4), strides=(2,2), padding="same")(d)
+    d = InstanceNormalization(axis=-1)(d)
+    d = keras.layers.LeakyReLU(alpha=0.2)(d)
 
-    #4] Conv; dim/8*dim/8*4*depht -> dim/16*dim/16*8*depht
-    D.add(keras.layers.Conv2D(8*depht, (4,4), strides=(2,2), padding="same"))
-    D.add(InstanceNormalization(axis=-1))
-    D.add(keras.layers.LeakyReLU(alpha=0.2))
+    #4] Conv; dim/8*dim/8*8*depht -> dim/8*dim/8*8*depht
+    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), padding="same")(d)
+    d = InstanceNormalization(axis=-1)(d)
+    pre_dil_conv = keras.layers.LeakyReLU(alpha=0.2)(d)
 
-    #5] Conv; dim/16*dim/16*8*depht -> dim/16*dim/16*8*depht
-    D.add(keras.layers.Conv2D(8*depht, (4,4), strides=(1,1), padding="same"))
-    D.add(InstanceNormalization(axis=-1))
-    D.add(keras.layers.LeakyReLU(alpha=0.2))
+    #C'est ici que se trouve un premier skip d'après le papier, on continue donc de l'autre coté avec des reseau de convolutions
+    #dilués et l'on ferra une concatenation plus loin pour permettre la connection
 
-    #6] Con final; dim/16*dim/16*8*depht -> dim/16*dim/16*1
-    D.add(keras.layers.Conv2D(1, (4,4), strides=(1,1), padding="same"))
+    #5] Dil Conv de d = 2
+    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), dilation_rate=(2,2),padding="same")(pre_dil_conv)
+    d = InstanceNormalization(axis=-1)(d)
+    d = keras.layers.LeakyReLU(alpha=0.2)(d)
+
+    #6] Dil Conv de d = 4
+    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), dilation_rate=(4,4),padding="same")(d)
+    d = InstanceNormalization(axis=-1)(d)
+    d = keras.layers.LeakyReLU(alpha=0.2)(d)
+
+    #7] Dil Conv de d = 8
+    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), dilation_rate=(8,8),padding="same")(d)
+    d = InstanceNormalization(axis=-1)(d)
+    post_dil_conv = keras.layers.LeakyReLU(alpha=0.2)(d)
+
+    #8] Reconnection par concatenation
+    d = keras.layers.Concatenate()([pre_dil_conv, post_dil_conv])
+
+    #9] Fin du réseau : Conv
+    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), padding="same")(d)
+    d = InstanceNormalization(axis=-1)(d)
+    d = keras.layers.LeakyReLU(alpha=0.2)(d)
+
+    #10] Dernier conv pour avoir un vecteur
+    d = keras.layers.Conv2D(1, (4,4), strides=(1,1), padding="same")(d)
+
 
     #On compile
-    print("{} trainable before compile : {}".format(D.name, D.trainable))
-    D.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.0002, beta_1=0.5), loss_weights=[0.5], metrics=["accuracy"])
-    return D
+    model = keras.Model(input_layer, d)
+    opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+    model.compile(loss='mse', optimizer=opt, loss_weights=[0.5], metrics=["accuracy"])
+
+    #Enfin, on enregistre dans un fichier si jamais c'est demandé pour évrifier la structure du réseau
+    #plot_model(d, to_file="d_{}.png".format(name), show_shapes=True, show_layer_names=True)
+
+    return model
 
 def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
     """    On change la structure par / à CGAN.py, voir pdf """
@@ -238,14 +267,6 @@ def create_resnet(n_filters, T):
 ############################################################
 ########## Création des structures d'entrainement ##########
 ############################################################
-
-def create_small_training_model_gen(gen, d, dim=256):
-    input_layer = keras.layers.Input(shape=(dim,dim,3))
-    output_layer = d(gen(input_layer))
-    model = keras.Model(input_layer, output_layer)
-    opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
-    model.compile(loss='mse', optimizer=opt)
-    return model
 
 def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name=""):
     """
