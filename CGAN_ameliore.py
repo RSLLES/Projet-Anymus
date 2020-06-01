@@ -96,7 +96,7 @@ def load_images(path, size):
         data_list.append(pixels)
     return np.asarray(data_list)
  
-compress_images()
+#compress_images()
 #dataA, dataB = load_compressed_images()
 #save_images(dataA[[0,1,2],...], dataB[[0,1,2], ...])
 
@@ -315,7 +315,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
 def get_random_element(X, n):
     return X[np.random.randint(0,X.shape[0], n),...]
 
-def upate_pool(existing_pool, new_images, pool_max_size=50):
+def update_pool(existing_pool, new_images, pool_max_size=50):
     """
     Cette fonction tient un historique des dernières images générée, car d'après le document il est plus performant
     d'entrener le générateur sur des images précédemment générées."""
@@ -344,7 +344,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 10, max(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 1, max(XA.shape[0], XB.shape[0])
     n_run_by_epochs = int(N_data/n_batch)
     shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
@@ -364,8 +364,8 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             xa_real, ya_real = get_random_element(XA, n_batch), np.ones(shape_y).astype(np.float32)
             xb_real, yb_real = get_random_element(XB, n_batch), np.ones(shape_y).astype(np.float32)
 
-            xa_fake, ya_fake = upate_pool(poolA, gen_B_vers_A.predict(xb_real)), np.zeros(shape_y).astype(np.float32)
-            xb_fake, yb_fake = upate_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
+            xa_fake, ya_fake = update_pool(poolA, gen_B_vers_A.predict(xb_real)), np.zeros(shape_y).astype(np.float32)
+            xb_fake, yb_fake = update_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
 
             #Entrainements
             #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
@@ -466,18 +466,14 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
 ########## Let's go baby #########
 ##################################
 
-gen_test = create_generator(name="A_vers_B")
-
-"""
-dim = 256
+dim = 128
 XA,XB = load_data()
 
-
 #Création des discriminateur qui sont eux deja compilés
-d_A, d_B = create_discriminator(name="A"), create_discriminator(name="B")
+d_A, d_B = create_discriminator(dim, name="A"), create_discriminator(dim, name="B")
 
 #Au tours des generateurs
-gen_A_vers_B, gen_B_vers_A = create_generator(name="A_vers_B"), create_generator(name="B_vers_A")
+gen_A_vers_B, gen_B_vers_A = create_generator(dim, name="A_vers_B"), create_generator(dim, name="B_vers_A")
 
 #On charge les poids
 load(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
@@ -485,9 +481,8 @@ load(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
 #On creer les training model
 #gen_1_vers_2 : create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, name="")
 #swapped
-training_model_gen_B_vers_A = create_training_model_gen(gen_B_vers_A, d_A, gen_A_vers_B, name="B_vers_A")
-training_model_gen_A_vers_B = create_training_model_gen(gen_A_vers_B, d_B, gen_B_vers_A, name="A_vers_B")
+training_model_gen_B_vers_A = create_training_model_gen(gen_B_vers_A, d_A, gen_A_vers_B, dim, name="B_vers_A")
+training_model_gen_A_vers_B = create_training_model_gen(gen_A_vers_B, d_B, gen_B_vers_A, dim, name="A_vers_B")
 
 #Et on y va
 train(gen_A_vers_B, d_A, gen_B_vers_A, d_B, training_model_gen_A_vers_B, training_model_gen_B_vers_A,  XA, XB)
-"""
