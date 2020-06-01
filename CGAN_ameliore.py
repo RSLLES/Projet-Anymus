@@ -91,7 +91,7 @@ def save_images(dataA, dataB, filename):
     plt.savefig(filename)
 
 
-def load_images(path, size=(256,256)):
+def load_images(path, size):
     """
     Charge les images d'un dossier
     """
@@ -112,7 +112,7 @@ def load_images(path, size=(256,256)):
 ########## Création du réseau ##########
 ########################################
 
-def create_discriminator(dim = 256, depht = 32, name=""):
+def create_discriminator(dim, depht = 32, name=""):
     """
     On change la structure par / à CGAN.py, voir pdf page 6 figure 2
     """
@@ -179,10 +179,9 @@ def create_discriminator(dim = 256, depht = 32, name=""):
 
     return model
 
-def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
+def create_generator(dim, depht = 32, name=""):
     """    On change la structure par / à CGAN.py, voir pdf """
     input_layer = keras.layers.Input(shape=(dim,dim,3))
-
 
     #1) Convolution (dim,dim,3) -> (dim/2,dim/2,depht)
     g = keras.layers.Conv2D(depht, (4,4), strides=(2,2), padding="same")(input_layer)
@@ -278,7 +277,7 @@ def create_resnet(T):
 ########## Création des structures d'entrainement ##########
 ############################################################
 
-def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name=""):
+def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
     """
     Cette méthode combine les différents réseau pour en déduire des fonctions de loss que nous allons chercher a minimiser
     Ici, c'est seulement gen_1_vers_2 qui va être entrainé
@@ -490,7 +489,7 @@ gen_A_vers_B, gen_B_vers_A = create_generator(name="A_vers_B"), create_generator
 load(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
 
 #On creer les training model
-#gen_1_vers_2 : create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim = 256, name="")
+#gen_1_vers_2 : create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, name="")
 #swapped
 training_model_gen_B_vers_A = create_training_model_gen(gen_B_vers_A, d_A, gen_A_vers_B, name="B_vers_A")
 training_model_gen_A_vers_B = create_training_model_gen(gen_A_vers_B, d_B, gen_B_vers_A, name="A_vers_B")
