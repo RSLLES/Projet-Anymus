@@ -26,18 +26,13 @@ def compress_images():
     Cette fonction prend toutes les images en .jpg, les import, les transformes en tableau, puis stock le gros tableau résultant
     pour qu'il soit plus simple à charger la prochaine fois
     """
-    mainPath = "Horse2Zebra/"
 
-    trainA = load_images(mainPath + "trainA/")
-    testA = load_images(mainPath + "testA/")
-    dataA = np.concatenate((trainA, testA))
+    dataA = load_images("2000Faces/")
 
-    trainB = load_images(mainPath + "trainB/")
-    testB = load_images(mainPath + "testB/")
-    dataB = np.concatenate((trainB, testB))
+    dataB = load_images("2000Manga/")
 
-    np.savez_compressed(mainPath + "h2z.npz", dataA, dataB)
-    print("dataset saved as h2z.npz" )
+    np.savez_compressed("f2m.npz", dataA, dataB)
+    print("dataset saved as f2m.npz" )
 
 def load_compressed_images():
     """
