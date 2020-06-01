@@ -174,7 +174,7 @@ def create_discriminator(dim = 256, depht = 32, name=""):
     opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
     model.compile(loss='mse', optimizer=opt, loss_weights=[0.5], metrics=["accuracy"])
 
-    #Enfin, on enregistre dans un fichier si jamais c'est demandé pour évrifier la structure du réseau
+    #Enfin, on enregistre dans un fichier si jamais c'est demandé pour vérifier la structure du réseau
     #plot_model(d, to_file="d_{}.png".format(name), show_shapes=True, show_layer_names=True)
 
     return model
@@ -183,71 +183,80 @@ def create_generator(dim = 256,depht = 32, n_resnet = 9, name=""):
     """    On change la structure par / à CGAN.py, voir pdf """
     input_layer = keras.layers.Input(shape=(dim,dim,3))
 
-    #1] Conv; dim*dim*3 -> dim/2*dim/2*depht
-    g = keras.layers.Conv2D(depht, (7,7), strides=(2,2), padding="same")(input_layer)
+
+    #1) Convolution (dim,dim,3) -> (dim/2,dim/2,depht)
+    g = keras.layers.Conv2D(depht, (4,4), strides=(2,2), padding="same")(input_layer)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #2] Conv; dim/2*dim/2*depht -> dim/4*dim/4*2*depht
-    g = keras.layers.Conv2D(2*depht, (3,3), strides=(2,2), padding="same")(g)
+    #2) Convolution (dim/2,dim/2,depht) -> (dim/2,dim/2,4*depht)
+    g = keras.layers.Conv2D(4*depht, (4,4), strides=(1,1), padding="same")(g)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #3] 3 filtres RESNET en profondeur 4depht
+    #3) 3 RESNET : (dim/2,dim/2,4*depht)
+    g = create_resnet(g)
+    g = create_resnet(g)
+    point_1 = create_resnet(g)
+
+    #4) Convolution : (dim/2,dim/2,4*depht) -> (dim/4,dim/4,8*depht)
+    g = keras.layers.Conv2D(8*depht, (4,4), strides=(2,2), padding="same")(point_1)
+    g = InstanceNormalization(axis=-1)(g)
+    g = keras.layers.LeakyReLU(alpha=0.2)(g)
+
+    #4) 3 Resnet : (dim/4,dim/4,8*depht)
+    g = create_resnet(g)
+    g = create_resnet(g)
+    point_2 = create_resnet(g)
+
+    #5) Convolution (dim/4,dim/4,8*depht) -> (dim/8,dim/8,8*depht)
+    g = keras.layers.Conv2D(8*depht, (4,4), strides=(2,2), padding="same")(point_2)
+    g = InstanceNormalization(axis=-1)(g)
+    g = keras.layers.LeakyReLU(alpha=0.2)(g)
+
+    #3) RESNET
     for _ in range(3):
-        g = create_resnet(n_filters=4*depht, T = g)
+        g = create_resnet(g)
 
-
-    #4] Conv; dim/4*dim/4*4*depht -> dim/8*dim/8*8*depht
-    g = keras.layers.Conv2D(8*depht, (3,3), strides=(2,2), padding="same")(g)
+    #4) Deconv : (dim/8,dim/8,8*depht) -> (dim/4,dim/4,8*depht)
+    g = keras.layers.Conv2DTranspose(8*depht, (3,3), strides=(2,2), padding="same")(g)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #5] 3 filtres RESNET 8depht
+    #Raccord 2 : (dim/4,dim/4,8*depht) + (dim/4,dim/4,8*depht) -> (dim/4,dim/4,16*depht)
+    g = keras.layers.Concatenate()([g, point_2])
+
+    #3 RESNET (dim/4,dim/4,16*depht)
     for _ in range(3):
-        g = create_resnet(n_filters=8*depht, T = g)
+        g = create_resnet(g)
 
-    #6] Conv; dim/8*dim/8*8*depht -> dim/8*dim/8*8*depht
-    g = keras.layers.Conv2D(8*depht, (3,3), strides=(2,2), padding="same")(g)
+    #Transpose Conv : (dim/4,dim/4,16*depht) -> (dim/2,dim/2,4*depht)
+    g = keras.layers.Conv2DTranspose(4*depht, (4,4), strides=(2,2), padding="same")(g)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #7] 3 filtres RESNET 8depht
+    #Raccord 1 : (dim/2,dim/2,4*depht) + (dim/2,dim/2,4*depht) -> (dim/2,dim/2,8*depht)
+    g = keras.layers.Concatenate()([g, point_1])
+
+    #3) RESNET (dim/2,dim/2,8*depht)
     for _ in range(3):
-        g = create_resnet(n_filters=8*depht, T = g)
+        g = create_resnet(g)
 
-
-    #8] ConvT; dim/8*dim/8*8*depht -> dim/4*dim/4*4*depht
-    g = keras.layers.Conv2DTranspose(4*depht, (3,3), strides=(2,2), padding="same")(g)
+    #DeConvolution : (dim/2,dim/2,8*depht) -> (dim,dim,depht)
+    g = keras.layers.Conv2DTranspose(depht, (4,4), strides=(2,2), padding="same")(g)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #9] 3 filtres RESNET 8depht
-    for _ in range(3):
-        g = create_resnet(n_filters=4*depht, T = g)
-
-    #10] ConvT; dim/4*dim/4*4*depht -> dim/2*dim/2*depht
-    g = keras.layers.Conv2DTranspose(2*depht, (3,3), strides=(2,2), padding="same", activation="relu")(g)
-    g = InstanceNormalization(axis=-1)(g)
-    g = keras.layers.LeakyReLU(alpha=0.2)(g)
-
-    #11] 3 filtres RESNET depht
-    for _ in range(3):
-        g = create_resnet(n_filters=depht, T = g)
-
-    #12] ConvT; dim/2*dim/2*2*depht -> dim*dim*depht
-    g = keras.layers.Conv2DTranspose(depht, (3,3), strides=(2,2), padding="same", activation="relu")(g)
-    g = InstanceNormalization(axis=-1)(g)
-    g = keras.layers.LeakyReLU(alpha=0.2)(g)
-
-    #13] ConvT; dim*dim*depht -> dim*dim*3
-    g = keras.layers.Conv2DTranspose(3, (7,7), padding="same")(g)
+    #DeConvolution : (dim,dim,depht) -> (dim,dim,3)
+    g = keras.layers.Conv2DTranspose(3, (4,4), strides=(1,1), padding="same")(g)
     g = keras.layers.Activation("tanh")(g)
+
     M = keras.Model(input_layer, g, name="gen_{}".format(name))
     return M
 
 
-def create_resnet(n_filters, T):
+def create_resnet(T):
+    n_filters = T.shape[-1]
     N = keras.layers.Conv2D(n_filters, (3,3), strides=(1,1), padding="same")(T)
     N = InstanceNormalization(axis=-1)(N)
     N = keras.layers.LeakyReLU(alpha=0.2)(N)
@@ -256,6 +265,7 @@ def create_resnet(n_filters, T):
     N = InstanceNormalization(axis=-1)(N)
 
     #On additionne l'entrée et la sortie (ce qui fait la particularité du RESNET)
+    #L'addition fonctionne forcément vu que le nombre de filtre correspond bien et que l'on a pas touché a la taille du reseau
     N = keras.layers.Add()([N, T])
 
     #Dernière fonction d'activation
@@ -463,9 +473,12 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
 ########## Let's go baby #########
 ##################################
 
+gen_test = create_generator(name="A_vers_B")
 
+"""
 dim = 256
 XA,XB = load_data()
+
 
 #Création des discriminateur qui sont eux deja compilés
 d_A, d_B = create_discriminator(name="A"), create_discriminator(name="B")
@@ -484,3 +497,4 @@ training_model_gen_A_vers_B = create_training_model_gen(gen_A_vers_B, d_B, gen_B
 
 #Et on y va
 train(gen_A_vers_B, d_A, gen_B_vers_A, d_B, training_model_gen_A_vers_B, training_model_gen_B_vers_A,  XA, XB)
+"""
