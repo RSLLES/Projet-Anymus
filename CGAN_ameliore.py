@@ -27,9 +27,8 @@ def compress_images():
     pour qu'il soit plus simple à charger la prochaine fois
     """
 
-    dataA = load_images("2000Faces/")
-
-    dataB = load_images("2000Manga/")
+    dataA = load_images("2000Faces/", size=(128,128))
+    dataB = load_images("2000Manga/", size=(128,128))
 
     np.savez_compressed("f2m.npz", dataA, dataB)
     print("dataset saved as f2m.npz" )
@@ -38,7 +37,7 @@ def load_compressed_images():
     """
     Charge les images depuis la version compressée fabriquée plus haut
     """
-    data = np.load('Horse2Zebra/h2z.npz')
+    data = np.load('f2m.npz')
     print("{} loaded".format(str(data['arr_0'].shape)))
     print("{} loaded".format(str(data['arr_1'].shape)))
     return (data['arr_0'], data['arr_1'])
@@ -97,7 +96,7 @@ def load_images(path, size):
         data_list.append(pixels)
     return np.asarray(data_list)
  
-#compress_images()
+compress_images()
 #dataA, dataB = load_compressed_images()
 #save_images(dataA[[0,1,2],...], dataB[[0,1,2], ...])
 
