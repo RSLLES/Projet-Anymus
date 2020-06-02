@@ -376,7 +376,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             loss_gen_A_vers_B.append(np.array(e1))
 
             #4) de même pour d_B
-            if (len(loss_d_B) == 0 or loss_d_B[-1][1] >= d_accuracy_threshold):
+            if (len(loss_d_B) == 0 or loss_d_B[-1][1] <= d_accuracy_threshold):
                 xb, yb = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
                 e4 = d_B.train_on_batch(xb, yb)
                 loss_d_B.append(np.array(e4))
@@ -390,7 +390,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             #3) On entraine d_A : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
             #On l'entraine uniquement si il n'est pas deja trop fort, donc si sa précision ne dépasse pas le treshold indiqué
-            if (len(loss_d_A) == 0 or loss_d_A[-1][1] >= d_accuracy_threshold):
+            if (len(loss_d_A) == 0 or loss_d_A[-1][1] <= d_accuracy_threshold):
                 xa, ya = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
                 e3 = d_A.train_on_batch(xa, ya)
                 loss_d_A.append(np.array(e3))
