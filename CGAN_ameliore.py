@@ -425,7 +425,7 @@ def train_discriminator_with_threshold(d, x_real, x_fake, y_real, y_fake, loss, 
 def train_discriminator_with_period(d, x_real, x_fake, y_real, y_fake, loss, i, period = 2):
     if i%period == 0:
         x, y = np.concatenate((x_real, x_fake)), np.concatenate((y_real, y_fake))
-        e = d_B.train_on_batch(x, y)
+        e = d.train_on_batch(x, y)
         loss.append(np.array(e))
 
 def screenshoot(X, gen, epoch):
