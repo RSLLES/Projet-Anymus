@@ -162,10 +162,9 @@ def create_discriminator(dim, depht = 32, name=""):
     #10] Dernier conv pour avoir un vecteur
     d = keras.layers.Conv2D(1, (4,4), strides=(1,1), padding="same")(d)
 
-
     #On compile
     model = keras.Model(input_layer, d)
-    opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+    opt = keras.optimizers.Adam(lr=0.0001, beta_1=0.5)
     model.compile(loss='mse', optimizer=opt, loss_weights=[0.5], metrics=["accuracy"])
 
     #Enfin, on enregistre dans un fichier si jamais c'est demandé pour vérifier la structure du réseau
@@ -345,6 +344,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     
     #Caractéristiques de l'entrainement
     n_epochs, n_batch, N_data = 1000, 4, max(XA.shape[0], XB.shape[0])
+    d_accuracy_threshold = 0.80
     n_run_by_epochs = int(N_data/n_batch)
     shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
@@ -374,9 +374,11 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             loss_gen_A_vers_B.append(np.array(e1))
 
             #4) de même pour d_B
-            xb, yb = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
-            e4 = d_B.train_on_batch(xb, yb)
-            loss_d_B.append(np.array(e4))
+            if (len(loss_d_B) > 0 and loss_d_B[-1][1] >= d_accuracy_threshold):
+                xb, yb = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
+                e4 = d_B.train_on_batch(xb, yb)
+                loss_d_B.append(np.array(e4))
+            
 
             #2) Sur le meme model, on entraine gen_B_vers_A
             # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
@@ -385,9 +387,11 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
             #3) On entraine d_A : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
-            xa, ya = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
-            e3 = d_A.train_on_batch(xa, ya)
-            loss_d_A.append(np.array(e3))
+            #On l'entraine uniquement si il n'est pas deja trop fort, donc si sa précision ne dépasse pas le treshold indiqué
+            if (len(loss_d_A) > 0 and loss_d_A[-1][1] >= d_accuracy_threshold):
+                xa, ya = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
+                e3 = d_A.train_on_batch(xa, ya)
+                loss_d_A.append(np.array(e3))
 
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
