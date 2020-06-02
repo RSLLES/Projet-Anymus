@@ -1,5 +1,6 @@
 import keras
 import numpy as np
+import sys
 from os.path import isfile
 from os import remove
 
@@ -338,18 +339,19 @@ def update_pool(existing_pool, new_images, pool_max_size=50):
 
 def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B, 
             training_model_gen_A_vers_B, training_model_gen_B_vers_A,  
-            XA, XB):
+            XA, XB,
+            starting_epoch = 0):
 
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 4, max(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data, period_screen = 1000, 4, max(XA.shape[0], XB.shape[0]), 1
     d_accuracy_threshold = 0.80
     n_run_by_epochs = int(N_data/n_batch)
     shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
     #Et la boucle qui tourne a tournée (ty Ribery)
-    for i_epo in range(n_epochs):
+    for i_epo in range(starting_epoch,n_epochs):
         print("")
         print("#######################################")
         print("######## Début epoch {}/{} ############".format(i_epo, n_epochs))
@@ -408,8 +410,8 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
         print("loss d_A : {}".format(loss_info(avg_loss_d_A)))
         print("loss d_B : {}".format(loss_info(avg_loss_d_B)))
 
-        #Toutes les 5 epochs, on fait un sourire
-        if (i_epo)%5 == 0:
+        #Toutes les period_screen epochs, on fait un sourire
+        if (i_epo)%period_screen == 0:
             screenshoot(XA, gen_A_vers_B, str(i_epo) + "_A_vers_B")
             screenshoot(XB, gen_B_vers_A, str(i_epo) + "_B_vers_A")
         
@@ -489,4 +491,8 @@ training_model_gen_B_vers_A = create_training_model_gen(gen_B_vers_A, d_A, gen_A
 training_model_gen_A_vers_B = create_training_model_gen(gen_A_vers_B, d_B, gen_B_vers_A, dim, name="A_vers_B")
 
 #Et on y va
-train(gen_A_vers_B, d_A, gen_B_vers_A, d_B, training_model_gen_A_vers_B, training_model_gen_B_vers_A,  XA, XB)
+starting_epoch = 0
+if (len(sys.argv) > 1):
+    starting_epoch = int(sys.argv[1])
+
+train(gen_A_vers_B, d_A, gen_B_vers_A, d_B, training_model_gen_A_vers_B, training_model_gen_B_vers_A,  XA, XB, starting_epoch)
