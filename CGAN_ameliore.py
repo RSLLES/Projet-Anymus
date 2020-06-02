@@ -407,8 +407,8 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
 
         print("Bilan de l'epoch :")
-        print("loss gen_A_vers_B : {}".format(loss_info(gen_A_vers_B, avg_loss_gen_A_vers_B)))
-        print("loss gen_B_vers_A : {}".format(loss_info(gen_B_vers_A, avg_loss_gen_B_vers_A)))
+        print("loss gen_A_vers_B : {}".format(loss_info(avg_loss_gen_A_vers_B)))
+        print("loss gen_B_vers_A : {}".format(loss_info(avg_loss_gen_B_vers_A)))
         print("loss d_A : {}".format(loss_info(avg_loss_d_A)))
         print("loss d_B : {}".format(loss_info(avg_loss_d_B)))
 
