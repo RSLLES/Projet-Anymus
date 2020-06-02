@@ -346,7 +346,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     
     #Caractéristiques de l'entrainement
     n_epochs, n_batch, N_data, period_screen = 1000, 4, max(XA.shape[0], XB.shape[0]), 1
-    d_accuracy_threshold = 0.80
+    d_update_period = 3
     n_run_by_epochs = int(N_data/n_batch)
     shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
@@ -376,12 +376,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             loss_gen_A_vers_B.append(np.array(e1))
 
             #4) de même pour d_B
-            xb, yb = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
-            e4 = d_B.test_on_batch(xb, yb)
-            if (len(loss_d_B) == 0 or e4[1] <= d_accuracy_threshold):
-                e4 = d_B.train_on_batch(xb, yb)
-            loss_d_B.append(np.array(e4))
-            
+            train_discriminator_with_threshold(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B)
 
             #2) Sur le meme model, on entraine gen_B_vers_A
             # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
@@ -391,12 +386,8 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             #3) On entraine d_A : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
             #On l'entraine uniquement si il n'est pas deja trop fort, donc si sa précision ne dépasse pas le treshold indiqué
-            xa, ya = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
-            e3 = d_A.test_on_batch(xa, ya)
-            if (len(loss_d_A) == 0 or e3[1] <= d_accuracy_threshold):
-                e3 = d_A.train_on_batch(xa, ya)
-            loss_d_A.append(np.array(e3))
-
+            train_discriminator_with_threshold(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A)
+            
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
         #Calcul des moyennes au cours de l'epoch
@@ -423,6 +414,12 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 def loss_info (loss) : 
     return [str(loss[i]) for i in range(loss.shape[0])]
 
+def train_discriminator_with_threshold(d, x_real, x_fake, y_real, y_fake, loss, d_accuracy_threshold = 0.80):
+    x, y = np.concatenate((x_real, x_fake)), np.concatenate((y_real, y_fake))
+    e = d.test_on_batch(x, y)
+    if (len(loss) == 0 or e[1] <= d_accuracy_threshold):
+        e = d_B.train_on_batch(x, y)
+    loss.append(np.array(e))
 
 def screenshoot(X, gen, epoch):
     """Fait quelques tests et enregistre l'image pour voir la progression"""
