@@ -377,7 +377,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
             #4) de même pour d_B
             #train_discriminator_with_threshold(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B)
-            train_discriminator_with_period(d_B, xb_real, xb_fake, yb_real, yb_fake, i, d_update_period)
+            train_discriminator_with_period(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B, i, d_update_period)
 
             #2) Sur le meme model, on entraine gen_B_vers_A
             # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
@@ -388,7 +388,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             #On l'entraine a la fois avec des vrais données et des fausses
             #On l'entraine uniquement si il n'est pas deja trop fort, donc si sa précision ne dépasse pas le treshold indiqué
             #train_discriminator_with_threshold(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A)
-            train_discriminator_with_period(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_B, i, d_update_period)
+            train_discriminator_with_period(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A, i, d_update_period)
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
         #Calcul des moyennes au cours de l'epoch
