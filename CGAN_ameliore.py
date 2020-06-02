@@ -345,7 +345,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data, period_screen = 1000, 3, max(XA.shape[0], XB.shape[0]), 1
+    n_epochs, n_batch, N_data, period_screen = 1000, 4, max(XA.shape[0], XB.shape[0]), 1
     d_update_period = 2
     n_run_by_epochs = int(N_data/n_batch)
     shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
