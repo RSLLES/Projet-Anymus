@@ -104,7 +104,7 @@ def load_images(path, size):
 ########## Création du réseau ##########
 ########################################
 
-def create_discriminator(dim, depht = 32, name=""):
+def create_discriminator(dim, depht = 32, name="", learning_factor = 1):
     """
     On change la structure par / à CGAN.py, voir pdf page 6 figure 2
     """
@@ -162,7 +162,7 @@ def create_discriminator(dim, depht = 32, name=""):
 
     #On compile
     model = keras.Model(input_layer, d)
-    opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+    opt = keras.optimizers.Adam(lr=0.0002*learning_factor, beta_1=0.5)
     model.compile(loss='mse', optimizer=opt, loss_weights=[0.5], metrics=["accuracy"])
 
     #Enfin, on enregistre dans un fichier si jamais c'est demandé pour vérifier la structure du réseau
@@ -343,7 +343,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     
     #Caractéristiques de l'entrainement
     n_epochs, n_batch, N_data, period_screen = 1000, 4, max(XA.shape[0], XB.shape[0]), 1
-    d_update_period = 2
+    d_update_period = 1
     n_run_by_epochs = int(N_data/n_batch)
     shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
@@ -419,7 +419,7 @@ def train_discriminator_with_threshold(d, x_real, x_fake, y_real, y_fake, loss, 
         e = d_B.train_on_batch(x, y)
     loss.append(np.array(e))
 
-def train_discriminator_with_period(d, x_real, x_fake, y_real, y_fake, loss, i, period = 2):
+def train_discriminator_with_period(d, x_real, x_fake, y_real, y_fake, loss, i, period = 1):
     if i%period == 0:
         x, y = np.concatenate((x_real, x_fake)), np.concatenate((y_real, y_fake))
         e = d.train_on_batch(x, y)
