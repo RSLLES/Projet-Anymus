@@ -493,7 +493,7 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
 
 dim = 128
 
-compress_images(dim)
+#compress_images(dim)
 #dataA, dataB = load_compressed_images()
 
 
