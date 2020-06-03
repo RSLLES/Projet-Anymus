@@ -91,7 +91,7 @@ def load_images(path, size):
     Charge les images d'un dossier
     """
     data_list = list()
-    for filename in listdir(path):
+    for filename in tqdm(listdir(path)):
         pixels = load_img(path + filename, target_size=size)
         pixels = img_to_array(pixels)
         data_list.append(pixels)
@@ -477,7 +477,7 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
 
 dim = 128
 
-#compress_images(dim)
+compress_images(dim)
 #dataA, dataB = load_compressed_images()
 
 
