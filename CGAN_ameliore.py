@@ -302,7 +302,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
 
     #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
     # (on donne plus d'importance aux cycles d'après le papier)
-    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 10, 10, 5], optimizer=opt, metrics=["accuracy"])
+    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 5, 5, 2], optimizer=opt, metrics=["accuracy"])
     return model
 
 
