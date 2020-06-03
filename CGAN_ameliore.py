@@ -342,8 +342,9 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data, period_screen = 1000, 4, max(XA.shape[0], XB.shape[0]), 1
+    n_epochs, n_batch, N_data = 1000, 4, max(XA.shape[0], XB.shape[0])
     d_update_period = 1
+    bilans_period, time_point, bilan_index = 3600*0.5, time(), starting_epoch #30mins
     n_run_by_epochs = int(N_data/n_batch)
     shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
@@ -372,36 +373,42 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             train_generator(training_model_gen_B_vers_A, xb_real, xa_real, ya_real, loss_gen_B_vers_A)
             train_discriminator(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A)
 
-        #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
-        #Calcul des moyennes au cours de l'epoch
-        avg_loss_gen_A_vers_B = sum(loss_gen_A_vers_B)/n_run_by_epochs
-        avg_loss_gen_B_vers_A = sum(loss_gen_B_vers_A)/n_run_by_epochs
-        avg_loss_d_A = sum(loss_d_A)/n_run_by_epochs
-        avg_loss_d_B = sum(loss_d_B)/n_run_by_epochs
+            #On check le temps écoulé et on fait un bilan si nécessaire
+            if (time() - time_point) > bilans_period:
+                time_point = time()
+                Bilan(  loss_d_A, loss_d_B, loss_gen_A_vers_B, loss_gen_B_vers_A, 
+                        XA, XB, d_A, d_B, gen_A_vers_B, gen_B_vers_A, bilan_index)
+                bilan_index+=1
 
+def Bilan(loss_d_A, loss_d_B, loss_gen_A_vers_B, loss_gen_B_vers_A, XA, XB, d_A, d_B, gen_A_vers_B, gen_B_vers_A, index):
+    #On affiche un petit résumé de la ou on en est
 
-        print("Bilan de l'epoch :")
-        print("loss gen_A_vers_B : {}".format(loss_info(avg_loss_gen_A_vers_B)))
-        print("loss gen_B_vers_A : {}".format(loss_info(avg_loss_gen_B_vers_A)))
-        print("loss d_A : {}".format(loss_info(avg_loss_d_A)))
-        print("loss d_B : {}".format(loss_info(avg_loss_d_B)))
+    print("Bilan {}:".format(index))
+    print("loss gen_A_vers_B : {}".format(loss_info(avg(loss_gen_A_vers_B))))
+    print("loss gen_B_vers_A : {}".format(loss_info(avg(loss_gen_B_vers_A))))
+    print("loss d_A : {}".format(loss_info(avg(loss_d_A))))
+    print("loss d_B : {}".format(loss_info(avg(loss_d_B))))
 
-        #Toutes les period_screen epochs, on fait un sourire
-        if (i_epo)%period_screen == 0:
-            screenshoot(XA, gen_A_vers_B, str(i_epo) + "_A_vers_B")
-            screenshoot(XB, gen_B_vers_A, str(i_epo) + "_B_vers_A")
-        
-        #On lache notre meilleure sauvegarde
-        save(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
+    screenshoot(XA, gen_A_vers_B, str(index) + "_A_vers_B")
+    screenshoot(XB, gen_B_vers_A, str(index) + "_B_vers_A")
+    
+    #On lache notre meilleure sauvegarde
+    save(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
 
 def loss_info (loss) : 
     return [str(loss[i]) for i in range(loss.shape[0])]
+
+def avg(L):
+    if (len(L) == 0):
+        print("Erreur de moyenne, la liste est vide")
+        return -1
+    return sum(L)/len(L)
 
 def train_discriminator_with_threshold(d, x_real, x_fake, y_real, y_fake, loss, d_accuracy_threshold = 0.80):
     x, y = np.concatenate((x_real, x_fake)), np.concatenate((y_real, y_fake))
     e = d.test_on_batch(x, y)
     if (len(loss) == 0 or e[1] <= d_accuracy_threshold):
-        e = d_B.train_on_batch(x, y)
+        e = d.train_on_batch(x, y)
     loss.append(np.array(e))
 
 def train_discriminator_with_period(d, x_real, x_fake, y_real, y_fake, loss, i, period = 1):
@@ -475,26 +482,27 @@ dim = 128
 #dataA, dataB = load_compressed_images()
 
 
-XA,XB = load_data()
+XFaces,XManga = load_data()
 
 #Création des discriminateur qui sont eux deja compilés
-d_A, d_B = create_discriminator(dim, name="A"), create_discriminator(dim, name="B")
+d_Faces, d_Manga = create_discriminator(dim, name="Faces"), create_discriminator(dim, name="Manga")
 
 #Au tours des generateurs
-gen_A_vers_B, gen_B_vers_A = create_generator(dim, name="A_vers_B"), create_generator(dim, name="B_vers_A")
+gen_F_vers_M, gen_M_vers_F = create_generator(dim, name="Faces_vers_Manga"), create_generator(dim, name="Manga_vers_Faces")
 
 #On charge les poids
-load(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
+load(d_Faces, d_Manga, gen_F_vers_M, gen_M_vers_F)
 
 #On creer les training model
-#gen_1_vers_2 : create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, name="")
-#swapped
-training_model_gen_B_vers_A = create_training_model_gen(gen_B_vers_A, d_A, gen_A_vers_B, dim, name="B_vers_A")
-training_model_gen_A_vers_B = create_training_model_gen(gen_A_vers_B, d_B, gen_B_vers_A, dim, name="A_vers_B")
+training_model_gen_F_vers_M = create_training_model_gen(gen_F_vers_M, d_Manga, gen_M_vers_F, dim, name="Faces_vers_Manga")
+training_model_gen_M_vers_F = create_training_model_gen(gen_M_vers_F, d_Faces, gen_F_vers_M, dim, name="Manga_vers_Faces")
 
 #Et on y va
 starting_epoch = 0
 if (len(sys.argv) > 1):
     starting_epoch = int(sys.argv[1])
 
-train(gen_A_vers_B, d_A, gen_B_vers_A, d_B, training_model_gen_A_vers_B, training_model_gen_B_vers_A,  XA, XB, starting_epoch)
+train(  gen_F_vers_M, d_Faces, 
+        gen_M_vers_F, d_Manga, 
+        training_model_gen_F_vers_M, training_model_gen_M_vers_F,  
+        XFaces, XManga, starting_epoch)
