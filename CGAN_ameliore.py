@@ -344,7 +344,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     #Caractéristiques de l'entrainement
     n_epochs, n_batch, N_data = 1000, 2, max(XA.shape[0], XB.shape[0])
     d_update_period = 1
-    bilans_period, time_point, bilan_index = 3*60, time(), starting_epoch #30mins
+    bilans_period, time_point, bilan_index = 5*60, time(), starting_epoch #30mins
     n_run_by_epochs = int(N_data/n_batch)
     shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
@@ -443,7 +443,7 @@ def train_generator(training_g_1_vers_2, x1_real, x2_real, y2_real, loss):
 
 def screenshoot(X, gen, epoch):
     """Fait quelques tests et enregistre l'image pour voir la progression"""
-    data_id = [0,1705,115,1999,1043]
+    data_id = [0,1705,115]
     data1 = (X[data_id,...]+1)*127.5
     data2 = (gen.predict(X[data_id,...])+1)*127.5
     save_images(data1, data2, "Progression/{}.png".format(epoch))
