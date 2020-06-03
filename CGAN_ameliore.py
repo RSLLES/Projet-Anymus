@@ -362,10 +362,26 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
         xb_fake, yb_fake = update_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
 
         #Entrainements
-        train_generator(training_model_gen_A_vers_B, xa_real, xb_real, yb_real, loss_gen_A_vers_B)
-        train_discriminator(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B)
-        train_generator(training_model_gen_B_vers_A, xb_real, xa_real, ya_real, loss_gen_B_vers_A)
-        train_discriminator(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A)
+        #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
+        #on avait gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
+        e1 = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, xa_real, xb_real, xb_real])
+        loss_gen_A_vers_B.append(np.array(e1))
+
+        #4) de même pour d_B
+        xb, yb = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
+        e4 = d_B.train_on_batch(xb, yb)
+        loss_d_B.append(np.array(e4))
+
+        #2) Sur le meme model, on entraine gen_B_vers_A
+        # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
+        e2 = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, xb_real, xa_real, xa_real])
+        loss_gen_B_vers_A.append(np.array(e2))
+
+        #3) On entraine d_A : input_from_A -> y
+        #On l'entraine a la fois avec des vrais données et des fausses
+        xa, ya = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
+        e3 = d_A.train_on_batch(xa, ya)
+        loss_d_A.append(np.array(e3))
 
         #On check le temps écoulé et on fait un bilan si nécessaire
         if (time() - time_point) > bilans_period:
