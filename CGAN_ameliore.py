@@ -22,14 +22,14 @@ print(keras.__version__)
 ########## Gestion des images ##########
 ########################################
 
-def compress_images():
+def compress_images(dim):
     """
     Cette fonction prend toutes les images en .jpg, les import, les transformes en tableau, puis stock le gros tableau résultant
     pour qu'il soit plus simple à charger la prochaine fois
     """
 
-    dataA = load_images("2000Faces/", size=(128,128))
-    dataB = load_images("2000Manga/", size=(128,128))
+    dataA = load_images("TrainFaces/", size=(dim,dim))
+    dataB = load_images("TrainManga/", size=(dim,dim))
 
     np.savez_compressed("f2m.npz", dataA, dataB)
     print("dataset saved as f2m.npz" )
@@ -96,10 +96,7 @@ def load_images(path, size):
         pixels = img_to_array(pixels)
         data_list.append(pixels)
     return np.asarray(data_list)
- 
-#compress_images()
-#dataA, dataB = load_compressed_images()
-#save_images(dataA[[0,1,2],...], dataB[[0,1,2], ...])
+
 
 
 
@@ -479,6 +476,11 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
 ##################################
 
 dim = 128
+
+#compress_images(dim)
+#dataA, dataB = load_compressed_images()
+
+
 XA,XB = load_data()
 
 #Création des discriminateur qui sont eux deja compilés
