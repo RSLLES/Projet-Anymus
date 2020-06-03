@@ -18,6 +18,8 @@ from tqdm import tqdm
 
 print(keras.__version__)
 
+LEARNING_RATE = 0.0002/2
+
 ########################################
 ########## Gestion des images ##########
 ########################################
@@ -104,7 +106,7 @@ def load_images(path, size):
 ########## Création du réseau ##########
 ########################################
 
-def create_discriminator(dim, depht = 32, name="", learning_factor = 1):
+def create_discriminator(dim, depht = 32, name="", learning_factor = 0.7):
     """
     On change la structure par / à CGAN.py, voir pdf page 6 figure 2
     """
@@ -162,7 +164,7 @@ def create_discriminator(dim, depht = 32, name="", learning_factor = 1):
 
     #On compile
     model = keras.Model(input_layer, d)
-    opt = keras.optimizers.Adam(lr=0.0002*learning_factor, beta_1=0.5)
+    opt = keras.optimizers.Adam(lr=LEARNING_RATE*learning_factor, beta_1=0.5)
     model.compile(loss='mse', optimizer=opt, loss_weights=[0.5], metrics=["accuracy"])
 
     #Enfin, on enregistre dans un fichier si jamais c'est demandé pour vérifier la structure du réseau
@@ -298,7 +300,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
 
     #Ces 4 entrainements sont mis ensemble pour etre tous traités en même temps
     model = keras.Model([input_from_1, input_from_2], [pred_d2, cycle_1, cycle_2, identity_2],name="train_gen_{}".format(name))
-    opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+    opt = keras.optimizers.Adam(lr=LEARNING_RATE, beta_1=0.5)
 
     #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
     # (on donne plus d'importance aux cycles d'après le papier)
@@ -342,7 +344,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     """C'est ici que se passe le gros entrainement"""
     
     #Caractéristiques de l'entrainement
-    n_epochs, n_batch, N_data = 1000, 2, max(XA.shape[0], XB.shape[0])
+    n_epochs, n_batch, N_data = 1000, 4, max(XA.shape[0], XB.shape[0])
     d_update_period = 1
     bilans_period, time_point, bilan_index = 5*60, time(), starting_epoch #30mins
     n_run_by_epochs = int(N_data/n_batch)
