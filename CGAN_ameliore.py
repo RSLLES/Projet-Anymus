@@ -367,25 +367,10 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             xb_fake, yb_fake = update_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
 
             #Entrainements
-            #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
-            #on avait gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
-            e1 = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, xa_real, xb_real, xb_real])
-            loss_gen_A_vers_B.append(np.array(e1))
-
-            #4) de même pour d_B
-            #train_discriminator_with_threshold(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B)
-            train_discriminator_with_period(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B, i, d_update_period)
-
-            #2) Sur le meme model, on entraine gen_B_vers_A
-            # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
-            e2 = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, xb_real, xa_real, xa_real])
-            loss_gen_B_vers_A.append(np.array(e2))
-
-            #3) On entraine d_A : input_from_A -> y
-            #On l'entraine a la fois avec des vrais données et des fausses
-            #On l'entraine uniquement si il n'est pas deja trop fort, donc si sa précision ne dépasse pas le treshold indiqué
-            #train_discriminator_with_threshold(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A)
-            train_discriminator_with_period(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A, i, d_update_period)
+            train_generator(training_model_gen_A_vers_B, xa_real, xb_real, yb_real, loss_gen_A_vers_B)
+            train_discriminator(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B)
+            train_generator(training_model_gen_B_vers_A, xb_real, xa_real, ya_real, loss_gen_B_vers_A)
+            train_discriminator(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A)
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
         #Calcul des moyennes au cours de l'epoch
@@ -424,6 +409,15 @@ def train_discriminator_with_period(d, x_real, x_fake, y_real, y_fake, loss, i, 
         x, y = np.concatenate((x_real, x_fake)), np.concatenate((y_real, y_fake))
         e = d.train_on_batch(x, y)
         loss.append(np.array(e))
+
+def train_discriminator(d, x_real, x_fake, y_real, y_fake, loss):
+    x, y = np.concatenate((x_real, x_fake)), np.concatenate((y_real, y_fake)) 
+    loss.append(np.array(d.train_on_batch(x, y)))
+
+def train_generator(training_g_1_vers_2, x1_real, x2_real, y2_real, loss):
+    #on avait gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
+    e = training_g_1_vers_2.train_on_batch([x1_real, x2_real],[y2_real, x1_real, x2_real, x2_real])
+    loss.append(np.array(e))
 
 def screenshoot(X, gen, epoch):
     """Fait quelques tests et enregistre l'image pour voir la progression"""
