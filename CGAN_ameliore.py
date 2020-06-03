@@ -348,46 +348,45 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
     n_run_by_epochs = int(N_data/n_batch)
     shape_y = (n_batch, d_A.output_shape[1], d_A.output_shape[2], d_A.output_shape[3])
 
+    poolA, poolB = [],[]
+    loss_gen_A_vers_B, loss_gen_B_vers_A = [],[]
+    loss_d_A, loss_d_B = [],[]
+
     #Et la boucle qui tourne a tournée (ty Ribery)
-    for i_epo in range(starting_epoch,n_epochs):
-        print("")
-        print("#######################################")
-        print("######## Début epoch {}/{} ############".format(i_epo, n_epochs))
-        print("#######################################")
+    while True:
+        #Construction du jeu de données a utiliser pour cette iteration de l'entrainement
+        xa_real, ya_real = get_random_element(XA, n_batch), np.ones(shape_y).astype(np.float32)
+        xb_real, yb_real = get_random_element(XB, n_batch), np.ones(shape_y).astype(np.float32)
 
-        loss_gen_A_vers_B, loss_gen_B_vers_A = [],[]
-        loss_d_A, loss_d_B = [],[]
-        poolA, poolB = [],[]
+        xa_fake, ya_fake = update_pool(poolA, gen_B_vers_A.predict(xb_real)), np.zeros(shape_y).astype(np.float32)
+        xb_fake, yb_fake = update_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
 
-        for i in tqdm(range(n_run_by_epochs)):
-            #Construction du jeu de données a utiliser pour cette iteration de l'entrainement
-            xa_real, ya_real = get_random_element(XA, n_batch), np.ones(shape_y).astype(np.float32)
-            xb_real, yb_real = get_random_element(XB, n_batch), np.ones(shape_y).astype(np.float32)
+        #Entrainements
+        train_generator(training_model_gen_A_vers_B, xa_real, xb_real, yb_real, loss_gen_A_vers_B)
+        train_discriminator(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B)
+        train_generator(training_model_gen_B_vers_A, xb_real, xa_real, ya_real, loss_gen_B_vers_A)
+        train_discriminator(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A)
 
-            xa_fake, ya_fake = update_pool(poolA, gen_B_vers_A.predict(xb_real)), np.zeros(shape_y).astype(np.float32)
-            xb_fake, yb_fake = update_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
-
-            #Entrainements
-            train_generator(training_model_gen_A_vers_B, xa_real, xb_real, yb_real, loss_gen_A_vers_B)
-            train_discriminator(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B)
-            train_generator(training_model_gen_B_vers_A, xb_real, xa_real, ya_real, loss_gen_B_vers_A)
-            train_discriminator(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A)
-
-            #On check le temps écoulé et on fait un bilan si nécessaire
-            if (time() - time_point) > bilans_period:
-                time_point = time()
-                Bilan(  loss_d_A, loss_d_B, loss_gen_A_vers_B, loss_gen_B_vers_A, 
-                        XA, XB, d_A, d_B, gen_A_vers_B, gen_B_vers_A, bilan_index)
-                bilan_index+=1
+        #On check le temps écoulé et on fait un bilan si nécessaire
+        if (time() - time_point) > bilans_period:
+            time_point = time()
+            Bilan(  loss_d_A, loss_d_B, loss_gen_A_vers_B, loss_gen_B_vers_A, 
+                    XA, XB, d_A, d_B, gen_A_vers_B, gen_B_vers_A, bilan_index)
+            bilan_index+=1
+            #On reset es grandeurs
+            loss_gen_A_vers_B, loss_gen_B_vers_A = [],[]
+            loss_d_A, loss_d_B = [],[]
 
 def Bilan(loss_d_A, loss_d_B, loss_gen_A_vers_B, loss_gen_B_vers_A, XA, XB, d_A, d_B, gen_A_vers_B, gen_B_vers_A, index):
     #On affiche un petit résumé de la ou on en est
-
+    print("")
+    print("#######################################")
     print("Bilan {}:".format(index))
     print("loss gen_A_vers_B : {}".format(loss_info(avg(loss_gen_A_vers_B))))
     print("loss gen_B_vers_A : {}".format(loss_info(avg(loss_gen_B_vers_A))))
     print("loss d_A : {}".format(loss_info(avg(loss_d_A))))
     print("loss d_B : {}".format(loss_info(avg(loss_d_B))))
+    print("#######################################")
 
     screenshoot(XA, gen_A_vers_B, str(index) + "_A_vers_B")
     screenshoot(XB, gen_B_vers_A, str(index) + "_B_vers_A")
