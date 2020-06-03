@@ -387,7 +387,7 @@ def Bilan(loss_d_A, loss_d_B, loss_gen_A_vers_B, loss_gen_B_vers_A, XA, XB, d_A,
     print("loss d_A : {}".format(loss_info(avg(loss_d_A))))
     print("loss d_B : {}".format(loss_info(avg(loss_d_B))))
     print("#######################################")
-    
+
     screenshoot(XA, gen_A_vers_B, "A_vers_B_" + str(index))
     screenshoot(XB, gen_B_vers_A, "B_vers_A_" + str(index))
     
@@ -428,7 +428,7 @@ def train_generator(training_g_1_vers_2, x1_real, x2_real, y2_real, loss):
 def screenshoot(X, gen, epoch):
     """Fait quelques tests et enregistre l'image pour voir la progression"""
     data1 = (X[[0,1,2],...]+1)*127.5
-    data2 = (gen.predict(X[[0,1,2],...])+1)*127.5
+    data2 = (gen.predict(X[[0,1705,115,1999,1043],...])+1)*127.5
     save_images(data1, data2, "Progression/{}.png".format(epoch))
 
 def show_result_network(X):
