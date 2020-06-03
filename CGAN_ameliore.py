@@ -387,9 +387,9 @@ def Bilan(loss_d_A, loss_d_B, loss_gen_A_vers_B, loss_gen_B_vers_A, XA, XB, d_A,
     print("loss d_A : {}".format(loss_info(avg(loss_d_A))))
     print("loss d_B : {}".format(loss_info(avg(loss_d_B))))
     print("#######################################")
-
-    screenshoot(XA, gen_A_vers_B, str(index) + "_A_vers_B")
-    screenshoot(XB, gen_B_vers_A, str(index) + "_B_vers_A")
+    
+    screenshoot(XA, gen_A_vers_B, "A_vers_B_" + str(index))
+    screenshoot(XB, gen_B_vers_A, "B_vers_A_" + str(index))
     
     #On lache notre meilleure sauvegarde
     save(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
@@ -429,7 +429,7 @@ def screenshoot(X, gen, epoch):
     """Fait quelques tests et enregistre l'image pour voir la progression"""
     data1 = (X[[0,1,2],...]+1)*127.5
     data2 = (gen.predict(X[[0,1,2],...])+1)*127.5
-    save_images(data1, data2, "Progression/epoch{}.png".format(epoch))
+    save_images(data1, data2, "Progression/{}.png".format(epoch))
 
 def show_result_network(X):
     data = (X+1)*127.5
