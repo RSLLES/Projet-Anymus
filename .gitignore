@@ -8,3 +8,6 @@ t2m.npz
 2000Manga/
 105_classes_pins_dataset/
 f2m.npz
+f2m_2000.npz
+f2m_full.npz
+Weights/
