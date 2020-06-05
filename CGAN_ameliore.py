@@ -18,7 +18,7 @@ from tqdm import tqdm
 
 print(keras.__version__)
 
-LEARNING_RATE = 0.0002/2
+LEARNING_RATE = 0.0002
 
 ########################################
 ########## Gestion des images ##########
@@ -304,7 +304,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
 
     #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
     # (on donne plus d'importance aux cycles d'après le papier)
-    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 5, 5, 2], optimizer=opt, metrics=["accuracy"])
+    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[2, 5, 5, 1], optimizer=opt, metrics=["accuracy"])
     return model
 
 
@@ -360,8 +360,8 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
         xa_real, ya_real = get_random_element(XA, n_batch), np.ones(shape_y).astype(np.float32)
         xb_real, yb_real = get_random_element(XB, n_batch), np.ones(shape_y).astype(np.float32)
 
-        xa_fake, ya_fake = update_pool(poolA, gen_B_vers_A.predict(xb_real)), np.zeros(shape_y).astype(np.float32)
-        xb_fake, yb_fake = update_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
+        xa_fake, ya_fake = gen_B_vers_A.predict(xb_real), np.zeros(shape_y).astype(np.float32)
+        xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), np.zeros(shape_y).astype(np.float32)
 
         #Entrainements
         #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
@@ -454,20 +454,6 @@ def show_result_network(X):
     data = (X+1)*127.5
     show_images(data, np.array([]))
 
-def test(img, gen, dcorrect, dautre):
-    #On va créer les sous titres
-    #Pour les img originales du monde correct
-    titresimg, titrestransf = [],[]
-    predd1, predd2 = dcorrect(img), dautre(img)
-    for i in range(img.shape[0]):
-        titresimg.append("D1 = {} | D2 = {}".format(predd1[i], predd2[i]))
-    predd1, predd2 = dcorrect(gen.predict(img)), dautre(gen.predict(img))
-    for i in range(img.shape[0]):
-        titrestransf.append("D1 = {} | D2 = {}".format(predd1[i], predd2[i]))
-
-
-    show_images(img*127.5+127.5, gen.predict(img)*127.5+127.5, titresimg, titrestransf)
-
 def save(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
     d_A.save_weights("Weights/d_A.h5")
@@ -488,8 +474,6 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
         print("Missing weights files detected. Starting from scratch")
 
 
-
-
 ##################################
 ########## Let's go baby #########
 ##################################
@@ -498,7 +482,6 @@ dim = 128
 
 #compress_images(dim)
 #dataA, dataB = load_compressed_images()
-
 
 XFaces,XManga = load_data()
 
