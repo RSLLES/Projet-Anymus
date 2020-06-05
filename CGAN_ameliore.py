@@ -16,6 +16,7 @@ from time import time
 from tqdm import tqdm
 
 print(keras.__version__)
+LEARNING_RATE = 0.0002
 
 ########################################
 ########## Gestion des images ##########
@@ -165,7 +166,7 @@ def create_discriminator(dim, depht = 32, name=""):
 
     #On compile
     model = keras.Model(input_layer, d)
-    opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+    opt = keras.optimizers.Adam(lr=LEARNING_RATE, beta_1=0.5)
     model.compile(loss='mse', optimizer=opt, loss_weights=[0.5], metrics=["accuracy"])
 
     #Enfin, on enregistre dans un fichier si jamais c'est demandé pour vérifier la structure du réseau
@@ -301,7 +302,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
 
     #Ces 4 entrainements sont mis ensemble pour etre tous traités en même temps
     model = keras.Model([input_from_1, input_from_2], [pred_d2, cycle_1, cycle_2, identity_2],name="train_gen_{}".format(name))
-    opt = keras.optimizers.Adam(lr=0.0002, beta_1=0.5)
+    opt = keras.optimizers.Adam(lr=LEARNING_RATE, beta_1=0.5)
 
     #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
     # (on donne plus d'importance aux cycles d'après le papier)
