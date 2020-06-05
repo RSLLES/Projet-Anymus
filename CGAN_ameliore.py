@@ -465,7 +465,7 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
 ##################################
 ########## Let's go baby #########
 ##################################
-
+#Nouvelle ancienne version
 dim = 128
 XA,XB = load_data()
 
