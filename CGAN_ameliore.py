@@ -381,7 +381,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             if entrainement_autorise_discr(loss_d_B):
                 e4 = d_B.train_on_batch(xb, yb)
             else:
-                e4 = d_B.test_on_batch(xb)
+                e4 = d_B.test_on_batch(xb, yb)
             loss_d_B.append(np.array(e4))
 
             #2) Sur le meme model, on entraine gen_B_vers_A
@@ -395,7 +395,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             if entrainement_autorise_discr(loss_d_A):
                 e3 = d_A.train_on_batch(xa, ya)
             else:
-                e3 = d_A.test_on_batch(xa)
+                e3 = d_A.test_on_batch(xa, ya)
             loss_d_A.append(np.array(e3))
 
 
