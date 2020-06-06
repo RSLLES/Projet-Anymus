@@ -306,7 +306,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
 
     #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
     # (on donne plus d'importance aux cycles d'après le papier)
-    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 10, 10, 5], optimizer=opt, metrics=["accuracy"])
+    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[3, 7, 7, 5], optimizer=opt, metrics=["accuracy"])
     return model
 
 
@@ -365,8 +365,10 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             xa_real, ya_real = get_random_element(XA, n_batch), np.ones(shape_y).astype(np.float32)
             xb_real, yb_real = get_random_element(XB, n_batch), np.ones(shape_y).astype(np.float32)
 
-            xa_fake, ya_fake = update_pool(poolA, gen_B_vers_A.predict(xb_real)), np.zeros(shape_y).astype(np.float32)
-            xb_fake, yb_fake = update_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
+            #xa_fake, ya_fake = update_pool(poolA, gen_B_vers_A.predict(xb_real)), np.zeros(shape_y).astype(np.float32)
+            xa_fake, ya_fake = gen_B_vers_A.predict(xb_real), np.zeros(shape_y).astype(np.float32)
+            #xb_fake, yb_fake = update_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
+            xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), np.zeros(shape_y).astype(np.float32)
 
             #Entrainements
             #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
@@ -376,7 +378,10 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
             #4) de même pour d_B
             xb, yb = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
-            e4 = d_B.train_on_batch(xb, yb)
+            if entrainement_autorise_discr(loss_d_B):
+                e4 = d_B.train_on_batch(xb, yb)
+            else:
+                e4 = d_B.test_on_batch(xb)
             loss_d_B.append(np.array(e4))
 
             #2) Sur le meme model, on entraine gen_B_vers_A
@@ -387,7 +392,10 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             #3) On entraine d_A : input_from_A -> y
             #On l'entraine a la fois avec des vrais données et des fausses
             xa, ya = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
-            e3 = d_A.train_on_batch(xa, ya)
+            if entrainement_autorise_discr(loss_d_A):
+                e3 = d_A.train_on_batch(xa, ya)
+            else:
+                e3 = d_A.test_on_batch(xa)
             loss_d_A.append(np.array(e3))
 
 
@@ -416,6 +424,18 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 def loss_info (r,loss) : 
     return [str(loss[i]) for i in range(loss.shape[0])]
 
+def entrainement_autorise_discr(loss_d, threshold_max = 0.75):
+    if (len(loss_d) == 0):
+        return True
+    accur = loss_d[-1][1]
+    if accur < threshold_max :
+        return True
+    #On tire un nombre au hasard dans [threshold_max, 1]
+    r = np.random.random()*(1-threshold_max) + threshold_max
+    #Si accur est plus petite que r, on entraine, sinon non
+    if accur < r :
+        return True
+    return False
 
 def screenshoot(X, gen, epoch):
     """Fait quelques tests et enregistre l'image pour voir la progression"""
