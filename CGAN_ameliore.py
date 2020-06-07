@@ -279,7 +279,7 @@ def create_resnet(T):
 def function_evaluation_all_layers_discr(d):
     inp = d.input                                           # input placeholder
     outputs = [layer.output for layer in d.layers]          # all layer outputs
-    return keras.backend.function([inp, keras.backend.learning_phase()], outputs )   # evaluation function
+    return keras.backend.function(inp, outputs )   # evaluation function
 
 def create_training_model_gen(gen_1_vers_2, d_2, d_2_f, gen_2_vers_1, dim, name=""):
     """
@@ -302,7 +302,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, d_2_f, gen_2_vers_1, dim, name=
 
     #Entrainement 1 bis :
     #Pour éviter le mode collapse, on peut également aller chercher l'égalité vers plusieurs layers du dicriminateur
-    pred_d2_all_layers = d_2_f([gen_1_vers_2(input_from_1),1.])
+    pred_d2_all_layers = d_2_f(gen_1_vers_2(input_from_1))
 
     #Entrainement 2 et 3 : L'objectif est que logiquement, gen_1_vers_2 = gen_2_vers_1^-1
     #Donc on va s'entrainer sur deux boucles, gen_1_vers_2(gen_2_vers_1(input_from_2)) = input_from_2
@@ -387,7 +387,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             #Entrainements
             #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
             #on avait gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, pred_d2_all_layers, cycle_1, cycle_2, identity_2]
-            e1 = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, d_B_f([xb_real, 1.]), xa_real, xb_real, xb_real])
+            e1 = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, d_B_f(xb_real), xa_real, xb_real, xb_real])
             loss_gen_A_vers_B.append(np.array(e1))
 
             #4) de même pour d_B
@@ -400,7 +400,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
             #2) Sur le meme model, on entraine gen_B_vers_A
             # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
-            e2 = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, d_A_f([xa_real, 1.]), xb_real, xa_real, xa_real])
+            e2 = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, d_A_f(xa_real), xb_real, xa_real, xa_real])
             loss_gen_B_vers_A.append(np.array(e2))
 
             #3) On entraine d_A : input_from_A -> y
