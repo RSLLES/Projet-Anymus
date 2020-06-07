@@ -510,7 +510,7 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
 ##################################
 #Nouvelle ancienne version
 dim = 128
-XFace,XManga = load_data(limit_size=200)
+XFace,XManga = load_data()
 
 #Création des discriminateur qui sont eux deja compilés
 d_Face, d_Face_inter = create_discriminator(dim, name="Face")
