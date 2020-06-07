@@ -51,9 +51,9 @@ def load_compressed_images(limit_size = np.infty):
 
     return (data['arr_0'], data['arr_1'])
 
-def load_data():
+def load_data(limit_size = np.infty):
     """Charge les images et les convertis entre -1 et 1 pour être bien utilisée dans la suite """
-    XA,XB = load_compressed_images()
+    XA,XB = load_compressed_images(limit_size)
     XA = XA/127.5-1
     XB = XB/127.5-1
     return XA,XB
@@ -501,7 +501,7 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
 ##################################
 #Nouvelle ancienne version
 dim = 128
-XA,XB = load_data()
+XA,XB = load_data(limit_size=200)
 
 #Création des discriminateur qui sont eux deja compilés
 d_A, d_B = create_discriminator(dim, name="A"), create_discriminator(dim, name="B")
