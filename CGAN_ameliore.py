@@ -34,13 +34,21 @@ def compress_images():
     np.savez_compressed("f2m.npz", dataA, dataB)
     print("dataset saved as f2m.npz" )
 
-def load_compressed_images():
+def load_compressed_images(limit_size = np.infty):
     """
     Charge les images depuis la version compressée fabriquée plus haut
     """
     data = np.load('f2m.npz')
+    
+    limit_size_0 = min(limit_size, data['arr_0'].shape[0])
+    data['arr_0'] = data['arr_0'][:limit_size_0]
     print("{} loaded".format(str(data['arr_0'].shape)))
+
+
+    limit_size_1 = min(limit_size, data['arr_1'].shape[0])
+    data['arr_1'] = data['arr_1'][:limit_size_1]
     print("{} loaded".format(str(data['arr_1'].shape)))
+
     return (data['arr_0'], data['arr_1'])
 
 def load_data():
