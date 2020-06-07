@@ -40,10 +40,16 @@ def load_compressed_images(limit_size = np.infty):
     """
     data = np.load('f2m.npz')
     
-    da = data['arr_0'][:limit_size]
+    if (limit_size == np.infty):
+        da = data['arr_0']
+    else:
+        da = data['arr_0'][:limit_size]
     print("{} loaded".format(str(da.shape)))
 
-    db = data['arr_1'][:limit_size]
+    if (limit_size == np.infty):
+        db = data['arr_1']
+    else:
+        db = data['arr_1'][:limit_size]
     print("{} loaded".format(str(db.shape)))
 
     return (da, db)
