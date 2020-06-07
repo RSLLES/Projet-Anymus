@@ -112,30 +112,30 @@ def load_images(path, size):
 ########## Création du réseau ##########
 ########################################
 
-def create_discriminator(dim, depht = 32, name=""):
+def create_discriminator(dim, depth = 32, name=""):
     """
     On change la structure par / à CGAN.py, voir pdf page 6 figure 2
     """
     input_layer = keras.layers.Input(shape=(dim,dim,3))
-    #Layer 1 : Convolution avec un filtre de 4x4 qui se déplace de 2 pixels en 2 -> Division du nombre de pixel par 2; depht filtres utilisés
+    #Layer 1 : Convolution avec un filtre de 4x4 qui se déplace de 2 pixels en 2 -> Division du nombre de pixel par 2; depth filtres utilisés
     #On ajoute un InstanceNormalization pour réduire les poids et éviter une explosion du gradient
-    #1] Conv; dim*dim*3 -> dim/2*dim/2*2depht
-    d = keras.layers.Conv2D(2*depht, (4,4), strides=(2,2), padding="same")(input_layer)
+    #1] Conv; dim*dim*3 -> dim/2*dim/2*2depth
+    d = keras.layers.Conv2D(2*depth, (4,4), strides=(2,2), padding="same")(input_layer)
     d = InstanceNormalization(axis=-1)(d)
     d = keras.layers.LeakyReLU(alpha=0.2)(d)
 
-    #2] Conv; dim/2*dim/2*depht -> dim/4*dim/4*4*depht
-    d = keras.layers.Conv2D(4*depht, (4,4), strides=(2,2), padding="same")(d)
+    #2] Conv; dim/2*dim/2*depth -> dim/4*dim/4*4*depth
+    d = keras.layers.Conv2D(4*depth, (4,4), strides=(2,2), padding="same")(d)
     d = InstanceNormalization(axis=-1)(d)
     d = keras.layers.LeakyReLU(alpha=0.2)(d)
 
-    #3] Conv; dim/4*dim/4*2*depht -> dim/8*dim/8*8*depht
-    d = keras.layers.Conv2D(8*depht, (4,4), strides=(2,2), padding="same")(d)
+    #3] Conv; dim/4*dim/4*2*depth -> dim/8*dim/8*8*depth
+    d = keras.layers.Conv2D(8*depth, (4,4), strides=(2,2), padding="same")(d)
     d = InstanceNormalization(axis=-1)(d)
     d = keras.layers.LeakyReLU(alpha=0.2)(d)
 
-    #4] Conv; dim/8*dim/8*8*depht -> dim/8*dim/8*8*depht
-    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), padding="same")(d)
+    #4] Conv; dim/8*dim/8*8*depth -> dim/8*dim/8*8*depth
+    d = keras.layers.Conv2D(8*depth, (3,3), strides=(1,1), padding="same")(d)
     d = InstanceNormalization(axis=-1)(d)
     pre_dil_conv = keras.layers.LeakyReLU(alpha=0.2)(d)
 
@@ -143,17 +143,17 @@ def create_discriminator(dim, depht = 32, name=""):
     #dilués et l'on ferra une concatenation plus loin pour permettre la connection
 
     #5] Dil Conv de d = 2
-    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), dilation_rate=(2,2),padding="same")(pre_dil_conv)
+    d = keras.layers.Conv2D(8*depth, (3,3), strides=(1,1), dilation_rate=(2,2),padding="same")(pre_dil_conv)
     d = InstanceNormalization(axis=-1)(d)
     d = keras.layers.LeakyReLU(alpha=0.2)(d)
 
     #6] Dil Conv de d = 4
-    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), dilation_rate=(4,4),padding="same")(d)
+    d = keras.layers.Conv2D(8*depth, (3,3), strides=(1,1), dilation_rate=(4,4),padding="same")(d)
     d = InstanceNormalization(axis=-1)(d)
     d = keras.layers.LeakyReLU(alpha=0.2)(d)
 
     #7] Dil Conv de d = 8
-    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), dilation_rate=(8,8),padding="same")(d)
+    d = keras.layers.Conv2D(8*depth, (3,3), strides=(1,1), dilation_rate=(8,8),padding="same")(d)
     d = InstanceNormalization(axis=-1)(d)
     post_dil_conv = keras.layers.LeakyReLU(alpha=0.2)(d)
 
@@ -161,7 +161,7 @@ def create_discriminator(dim, depht = 32, name=""):
     d = keras.layers.Concatenate()([pre_dil_conv, post_dil_conv])
 
     #9] Fin du réseau : Conv
-    d = keras.layers.Conv2D(8*depht, (3,3), strides=(1,1), padding="same")(d)
+    d = keras.layers.Conv2D(8*depth, (3,3), strides=(1,1), padding="same")(d)
     d = InstanceNormalization(axis=-1)(d)
     d = keras.layers.LeakyReLU(alpha=0.2)(d)
 
@@ -179,37 +179,37 @@ def create_discriminator(dim, depht = 32, name=""):
 
     return model
 
-def create_generator(dim, depht = 32, name=""):
+def create_generator(dim, depth = 32, name=""):
     """    On change la structure par / à CGAN.py, voir pdf """
     input_layer = keras.layers.Input(shape=(dim,dim,3))
 
-    #1) Convolution (dim,dim,3) -> (dim/2,dim/2,depht)
-    g = keras.layers.Conv2D(depht, (4,4), strides=(2,2), padding="same")(input_layer)
+    #1) Convolution (dim,dim,3) -> (dim/2,dim/2,depth)
+    g = keras.layers.Conv2D(depth, (4,4), strides=(2,2), padding="same")(input_layer)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #2) Convolution (dim/2,dim/2,depht) -> (dim/2,dim/2,4*depht)
-    g = keras.layers.Conv2D(4*depht, (4,4), strides=(1,1), padding="same")(g)
+    #2) Convolution (dim/2,dim/2,depth) -> (dim/2,dim/2,4*depth)
+    g = keras.layers.Conv2D(4*depth, (4,4), strides=(1,1), padding="same")(g)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #3) 3 RESNET : (dim/2,dim/2,4*depht)
+    #3) 3 RESNET : (dim/2,dim/2,4*depth)
     g = create_resnet(g)
     g = create_resnet(g)
     point_1 = create_resnet(g)
 
-    #4) Convolution : (dim/2,dim/2,4*depht) -> (dim/4,dim/4,8*depht)
-    g = keras.layers.Conv2D(8*depht, (4,4), strides=(2,2), padding="same")(point_1)
+    #4) Convolution : (dim/2,dim/2,4*depth) -> (dim/4,dim/4,8*depth)
+    g = keras.layers.Conv2D(8*depth, (4,4), strides=(2,2), padding="same")(point_1)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #4) 3 Resnet : (dim/4,dim/4,8*depht)
+    #4) 3 Resnet : (dim/4,dim/4,8*depth)
     g = create_resnet(g)
     g = create_resnet(g)
     point_2 = create_resnet(g)
 
-    #5) Convolution (dim/4,dim/4,8*depht) -> (dim/8,dim/8,8*depht)
-    g = keras.layers.Conv2D(8*depht, (4,4), strides=(2,2), padding="same")(point_2)
+    #5) Convolution (dim/4,dim/4,8*depth) -> (dim/8,dim/8,8*depth)
+    g = keras.layers.Conv2D(8*depth, (4,4), strides=(2,2), padding="same")(point_2)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
@@ -217,36 +217,36 @@ def create_generator(dim, depht = 32, name=""):
     for _ in range(3):
         g = create_resnet(g)
 
-    #4) Deconv : (dim/8,dim/8,8*depht) -> (dim/4,dim/4,8*depht)
-    g = keras.layers.Conv2DTranspose(8*depht, (3,3), strides=(2,2), padding="same")(g)
+    #4) Deconv : (dim/8,dim/8,8*depth) -> (dim/4,dim/4,8*depth)
+    g = keras.layers.Conv2DTranspose(8*depth, (3,3), strides=(2,2), padding="same")(g)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #Raccord 2 : (dim/4,dim/4,8*depht) + (dim/4,dim/4,8*depht) -> (dim/4,dim/4,16*depht)
+    #Raccord 2 : (dim/4,dim/4,8*depth) + (dim/4,dim/4,8*depth) -> (dim/4,dim/4,16*depth)
     g = keras.layers.Concatenate()([g, point_2])
 
-    #3 RESNET (dim/4,dim/4,16*depht)
+    #3 RESNET (dim/4,dim/4,16*depth)
     for _ in range(3):
         g = create_resnet(g)
 
-    #Transpose Conv : (dim/4,dim/4,16*depht) -> (dim/2,dim/2,4*depht)
-    g = keras.layers.Conv2DTranspose(4*depht, (4,4), strides=(2,2), padding="same")(g)
+    #Transpose Conv : (dim/4,dim/4,16*depth) -> (dim/2,dim/2,4*depth)
+    g = keras.layers.Conv2DTranspose(4*depth, (4,4), strides=(2,2), padding="same")(g)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #Raccord 1 : (dim/2,dim/2,4*depht) + (dim/2,dim/2,4*depht) -> (dim/2,dim/2,8*depht)
+    #Raccord 1 : (dim/2,dim/2,4*depth) + (dim/2,dim/2,4*depth) -> (dim/2,dim/2,8*depth)
     g = keras.layers.Concatenate()([g, point_1])
 
-    #3) RESNET (dim/2,dim/2,8*depht)
+    #3) RESNET (dim/2,dim/2,8*depth)
     for _ in range(3):
         g = create_resnet(g)
 
-    #DeConvolution : (dim/2,dim/2,8*depht) -> (dim,dim,depht)
-    g = keras.layers.Conv2DTranspose(depht, (4,4), strides=(2,2), padding="same")(g)
+    #DeConvolution : (dim/2,dim/2,8*depth) -> (dim,dim,depth)
+    g = keras.layers.Conv2DTranspose(depth, (4,4), strides=(2,2), padding="same")(g)
     g = InstanceNormalization(axis=-1)(g)
     g = keras.layers.LeakyReLU(alpha=0.2)(g)
 
-    #DeConvolution : (dim,dim,depht) -> (dim,dim,3)
+    #DeConvolution : (dim,dim,depth) -> (dim,dim,3)
     g = keras.layers.Conv2DTranspose(3, (4,4), strides=(1,1), padding="same")(g)
     g = keras.layers.Activation("tanh")(g)
 
