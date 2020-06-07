@@ -319,7 +319,7 @@ def create_training_model_gen(gen_1_vers_2, d_2, d_2_f, gen_2_vers_1, dim, name=
 
     #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
     # (on donne plus d'importance aux cycles d'après le papier)
-    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[3, 7, 7, 5], optimizer=opt, metrics=["accuracy"])
+    model.compile(loss=['mse', 'mae', 'mae', 'mae', 'mae'], loss_weights=[1, 1, 5, 5, 1], optimizer=opt, metrics=["accuracy"])
     return model
 
 
@@ -518,8 +518,8 @@ load(d_Face, d_Manga, gen_Face_vers_Manga, gen_Manga_vers_Face)
 #On creer les training model
 #gen_1_vers_2 : create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, name="")
 #swapped
-training_model_gen_Manga_vers_Face = create_training_model_gen(gen_Manga_vers_Face, d_Face, gen_Face_vers_Manga, dim, name="Manga_vers_Face")
-training_model_gen_Face_vers_Manga = create_training_model_gen(gen_Face_vers_Manga, d_Manga, gen_Manga_vers_Face, dim, name="Face_vers_Manga")
+training_model_gen_Manga_vers_Face = create_training_model_gen(gen_Manga_vers_Face, d_Face, d_Face_f, gen_Face_vers_Manga, dim, name="Manga_vers_Face")
+training_model_gen_Face_vers_Manga = create_training_model_gen(gen_Face_vers_Manga, d_Manga, d_Manga_f, gen_Manga_vers_Face, dim, name="Face_vers_Manga")
 
 #Et on y va
 train(gen_Face_vers_Manga, d_Face, gen_Manga_vers_Face, d_Manga, 
