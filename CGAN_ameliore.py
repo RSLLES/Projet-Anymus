@@ -138,6 +138,7 @@ def create_discriminator(dim, depth = 32, name=""):
     d = keras.layers.Conv2D(8*depth, (3,3), strides=(1,1), padding="same")(d)
     d = InstanceNormalization(axis=-1)(d)
     pre_dil_conv = keras.layers.LeakyReLU(alpha=0.2)(d)
+    intermediate_layer = pre_dil_conv
 
     #C'est ici que se trouve un premier skip d'après le papier, on continue donc de l'autre coté avec des reseau de convolutions
     #dilués et l'on ferra une concatenation plus loin pour permettre la connection
@@ -172,12 +173,16 @@ def create_discriminator(dim, depth = 32, name=""):
     #On compile
     model = keras.Model(input_layer, d)
     opt = keras.optimizers.Adam(lr=LEARNING_RATE, beta_1=0.5)
-    model.compile(loss='mse', optimizer=opt, loss_weights=[0.5], metrics=["accuracy"])
+    model.compile(loss='mse', optimizer=opt, metrics=["accuracy"])
+
+    #On compile le layer intermediaire
+    model_inter = keras.Model(input_layer, intermediate_layer)
+    model_inter.compile(loss='mse', optimizer=opt, metrics=["accuracy"])
 
     #Enfin, on enregistre dans un fichier si jamais c'est demandé pour vérifier la structure du réseau
     #plot_model(d, to_file="d_{}.png".format(name), show_shapes=True, show_layer_names=True)
 
-    return model
+    return model, model_inter
 
 def create_generator(dim, depth = 32, name=""):
     """    On change la structure par / à CGAN.py, voir pdf """
@@ -281,7 +286,7 @@ def function_evaluation_all_layers_discr(d):
     outputs = [layer.output for layer in d.layers]          # all layer outputs
     return keras.backend.function(inp, outputs )   # evaluation function
 
-def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
+def create_training_model_gen(gen_1_vers_2, d_2, d_2_inter, gen_2_vers_1, dim, name=""):
     """
     Cette méthode combine les différents réseau pour en déduire des fonctions de loss que nous allons chercher a minimiser
     Ici, c'est seulement gen_1_vers_2 qui va être entrainé
@@ -309,13 +314,16 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
     #Entrainement 4 : Enfin, une image du monde 2 ne doit pas changer par gen_1_vers_2
     identity_2 = gen_1_vers_2(input_from_2)
 
+    #Entrainement 5 : On essaie le feature matching loss, donc l'égalité du layer au mileu
+    d2_inter_pred = d_2_inter(gen_1_vers_2(input_from_1))
+
     #Ces 4 entrainements sont mis ensemble pour etre tous traités en même temps
-    model = keras.Model([input_from_1, input_from_2], [pred_d2, cycle_1, cycle_2, identity_2],name="train_gen_{}".format(name))
+    model = keras.Model([input_from_1, input_from_2], [pred_d2, d2_inter_pred, cycle_1, cycle_2, identity_2],name="train_gen_{}".format(name))
     opt = keras.optimizers.Adam(lr=LEARNING_RATE, beta_1=0.5)
 
     #Compilation du model, on va minimiser la CL de ces fonctions de pertes, pondéré par les poids en dessous
     # (on donne plus d'importance aux cycles d'après le papier)
-    model.compile(loss=['mse', 'mae', 'mae', 'mae'], loss_weights=[1, 5, 5, 1], optimizer=opt, metrics=["accuracy"])
+    model.compile(loss=['mse', 'mae', 'mae', 'mae', 'mae'], loss_weights=[1, 1, 3, 3, 1], optimizer=opt, metrics=["accuracy"])
     return model
 
 
@@ -349,6 +357,7 @@ def update_pool(existing_pool, new_images, pool_max_size=50):
 
 def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B, 
             training_model_gen_A_vers_B, training_model_gen_B_vers_A,
+            d_A_inter, d_B_inter,
             XA, XB):
 
     """C'est ici que se passe le gros entrainement"""
@@ -379,10 +388,14 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             #xb_fake, yb_fake = update_pool(poolB, gen_A_vers_B.predict(xa_real)), np.zeros(shape_y).astype(np.float32)
             xb_fake, yb_fake = gen_A_vers_B.predict(xa_real), np.zeros(shape_y).astype(np.float32)
 
+            #Layer intermediaire
+            inter_a = d_A_inter.predict(xa_real)
+            inter_b = d_B_inter.predict(xb_real)
+
             #Entrainements
             #1) On entraine gen_A_vers_B : ici, le monde 1 est A et le monde 2 est B
             #on avait gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
-            e1 = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, xa_real, xb_real, xb_real])
+            e1 = training_model_gen_A_vers_B.train_on_batch([xa_real, xb_real], [yb_real, inter_b, xa_real, xb_real, xb_real])
             loss_gen_A_vers_B.append(np.array(e1))
 
             #4) de même pour d_B
@@ -395,7 +408,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
             #2) Sur le meme model, on entraine gen_B_vers_A
             # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
-            e2 = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, xb_real, xa_real, xa_real])
+            e2 = training_model_gen_B_vers_A.train_on_batch([xb_real, xa_real], [ya_real, inter_a, xb_real, xa_real, xa_real])
             loss_gen_B_vers_A.append(np.array(e2))
 
             #3) On entraine d_A : input_from_A -> y
@@ -500,22 +513,24 @@ dim = 128
 XFace,XManga = load_data(limit_size=200)
 
 #Création des discriminateur qui sont eux deja compilés
-d_Face, d_Manga = create_discriminator(dim, name="Face"), create_discriminator(dim, name="Manga")
+d_Face, d_Face_inter = create_discriminator(dim, name="Face")
+d_Manga, d_Manga_inter = create_discriminator(dim, name="Manga")
 
-#Au tours des generateurs
-gen_Face_vers_Manga, gen_Manga_vers_Face = create_generator(dim, name="Face_vers_Manga"), create_generator(dim, name="Manga_vers_Face")
+#Au tour des generateurs
+gen_Face_vers_Manga = create_generator(dim, name="Face_vers_Manga")
+gen_Manga_vers_Face = create_generator(dim, name="Manga_vers_Face")
 
 #On charge les poids
 load(d_Face, d_Manga, gen_Face_vers_Manga, gen_Manga_vers_Face)
 
-
 #On creer les training model
 #gen_1_vers_2 : create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, name="")
 #swapped
-training_model_gen_Manga_vers_Face = create_training_model_gen(gen_Manga_vers_Face, d_Face, gen_Face_vers_Manga, dim, name="Manga_vers_Face")
-training_model_gen_Face_vers_Manga = create_training_model_gen(gen_Face_vers_Manga, d_Manga, gen_Manga_vers_Face, dim, name="Face_vers_Manga")
+training_model_gen_Manga_vers_Face = create_training_model_gen(gen_Manga_vers_Face, d_Face, d_Face_inter, gen_Face_vers_Manga, dim, name="Manga_vers_Face")
+training_model_gen_Face_vers_Manga = create_training_model_gen(gen_Face_vers_Manga, d_Manga, d_Manga_inter, gen_Manga_vers_Face, dim, name="Face_vers_Manga")
 
 #Et on y va
 train(gen_Face_vers_Manga, d_Face, gen_Manga_vers_Face, d_Manga, 
     training_model_gen_Face_vers_Manga, training_model_gen_Manga_vers_Face,
+    d_Face_inter, d_Manga_inter,
     XFace, XManga)
