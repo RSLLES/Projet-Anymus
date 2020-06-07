@@ -291,6 +291,11 @@ def create_training_model_gen(gen_1_vers_2, d_2, gen_2_vers_1, dim, name=""):
     #On entraine donc le reseau d_2(gen_1_vers_2(input_from_1)) en cherchant à obtenir 1 à chaque fois
     pred_d2 = d_2(gen_1_vers_2(input_from_1))
 
+    #Entrainement 1 bis :
+    #Pour éviter le mode collapse, on peut également aller chercher l'égalité vers plusieurs layers du dicriminateur
+    #On se concentre sur les layers
+    
+
     #Entrainement 2 et 3 : L'objectif est que logiquement, gen_1_vers_2 = gen_2_vers_1^-1
     #Donc on va s'entrainer sur deux boucles, gen_1_vers_2(gen_2_vers_1(input_from_2)) = input_from_2
     # et dans l'autre sens gen_2_vers_1(gen_1_vers_2(input_1)) = input_1
@@ -415,8 +420,8 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
         #Toutes les 5 epochs, on fait un sourire
         if (i_epo)%5 == 0:
-            screenshoot(XA, gen_A_vers_B, str(i_epo) + "_A_vers_B")
-            screenshoot(XB, gen_B_vers_A, str(i_epo) + "_B_vers_A")
+            screenshoot(XA, gen_A_vers_B, "A_vers_B_" + str(i_epo))
+            screenshoot(XB, gen_B_vers_A, "B_vers_A_" + str(i_epo))
         
         #On lache notre meilleure sauvegarde
         save(d_A, d_B, gen_A_vers_B, gen_B_vers_A)
@@ -441,7 +446,7 @@ def screenshoot(X, gen, epoch):
     """Fait quelques tests et enregistre l'image pour voir la progression"""
     data1 = (X[[0,1,2],...]+1)*127.5
     data2 = (gen.predict(X[[0,1,2],...])+1)*127.5
-    save_images(data1, data2, "Progression/epoch{}.png".format(epoch))
+    save_images(data1, data2, "Progression/{}.png".format(epoch))
 
 def show_result_network(X):
     data = (X+1)*127.5
