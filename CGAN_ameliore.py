@@ -283,6 +283,11 @@ def create_resnet(T):
     return N
 
 
+def create_minibatch_layer(T):
+    #Layer de type minibatch pour essayer d'éviter l'effondrement des modes
+    pass
+
+
 ############################################################
 ########## Création des structures d'entrainement ##########
 ############################################################
@@ -405,12 +410,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             loss_gen_A_vers_B.append(np.array(e1))
 
             #4) de même pour d_B
-            xb, yb = np.concatenate((xb_real, xb_fake)), np.concatenate((yb_real, yb_fake))
-            if entrainement_autorise_discr(loss_d_B):
-                e4 = d_B.train_on_batch(xb, yb)
-            else:
-                e4 = d_B.test_on_batch(xb, yb)
-            loss_d_B.append(np.array(e4))
+            train_discr(d_B, xb_real, xb_fake, yb_real, yb_fake, loss_d_B)
 
             #2) Sur le meme model, on entraine gen_B_vers_A
             # gen_1_vers_2 : [input_from_1, input_from_2] -> [pred_d2, cycle_1, cycle_2, identity_2]
@@ -418,13 +418,7 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
             loss_gen_B_vers_A.append(np.array(e2))
 
             #3) On entraine d_A : input_from_A -> y
-            #On l'entraine a la fois avec des vrais données et des fausses
-            xa, ya = np.concatenate((xa_real, xa_fake)), np.concatenate((ya_real, ya_fake))
-            if entrainement_autorise_discr(loss_d_A):
-                e3 = d_A.train_on_batch(xa, ya)
-            else:
-                e3 = d_A.test_on_batch(xa, ya)
-            loss_d_A.append(np.array(e3))
+            train_discr(d_A, xa_real, xa_fake, ya_real, ya_fake, loss_d_A)
 
 
         #On affiche un petit résumé de la ou on en est lorsque l'epochs est fini
@@ -451,6 +445,14 @@ def train(  gen_A_vers_B, d_A, gen_B_vers_A, d_B,
 
 def loss_info (r,loss) : 
     return [str(loss[i]) for i in range(loss.shape[0])]
+
+def train_discr(d, x_real, x_fake, y_real, y_fake, loss):
+    x, y = np.concatenate((x_real, x_fake)), np.concatenate((y_real, y_fake))
+    if entrainement_autorise_discr(loss):
+        e = d.train_on_batch(x, y)
+    else:
+        e = d.test_on_batch(x, y)
+    loss.append(np.array(e))
 
 def entrainement_autorise_discr(loss_d, threshold_max = 0.75):
     if (len(loss_d) == 0):
