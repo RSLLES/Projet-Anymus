@@ -21,7 +21,7 @@ import os
 # Sur l'entrainement
 BATCH_SIZE = 1
 EPOCHS = 200
-SAMPLE_INTERVAL = 500
+SAMPLE_INTERVAL = 2000
 
 # Input shape
 IMG_ROWS = 128
@@ -31,10 +31,10 @@ IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Number of filters in the first layer of G and D
 GF = 32
-DF = 64
+DF = 32
 
 # Calculate output shape of D (PatchGAN)
-PATCH = int(IMG_ROWS / 2**4)
+PATCH = int(IMG_ROWS / 2**3)
 DISC_PATCH = (PATCH, PATCH, 1)
 
 # Loss weights
@@ -43,7 +43,7 @@ LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
 learning_rate = 0.0002
-discr_factor = 0.5
+discr_factor = 3/4
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
@@ -64,7 +64,7 @@ data_loader = DataLoader(dataset_name=dataset_name, img_res=(IMG_ROWS, IMG_COLS)
 #
 
 def build_discriminator_improved(name=""):
-    def conv_layer(layer_input, filters, d = 1, f_size=4, s = 2, normalization=Tue):
+    def conv_layer(layer_input, filters, d = 1, f_size=4, s = 2, normalization=True):
         d = Conv2D(filters, kernel_size=f_size, strides=s, dilation_rate=(d,d), padding='same')(layer_input)
         d = LeakyReLU(alpha=0.2)(d)
         if normalization:
@@ -120,8 +120,8 @@ def build_generator_improved(name=""):
         d = LeakyReLU(alpha=0.2)(d)
         d = InstanceNormalization()(d)
         return d
-    def tconv2d(layer_input, filters, f_size=4):
-        l = Conv2DTranspose(filters, kernel_size=f_size, strides=2, padding="same")(layer_input)
+    def tconv2d(layer_input, filters, f_size=4, s=2):
+        l = Conv2DTranspose(filters, kernel_size=f_size, strides=s, padding="same")(layer_input)
         l = InstanceNormalization(axis=-1)(l)
         l = LeakyReLU(alpha=0.2)(l)
         return l
@@ -143,8 +143,8 @@ def build_generator_improved(name=""):
         return d
     def upsampling(layer_input, skip_layer, filters):
         u = tconv2d(layer_input, skip_layer.shape[-1])
-        u = Add()([layer_input, u])
-        u = resnet3(filters)
+        u = Add()([skip_layer, u])
+        u = resnet3(u,filters)
         return u
     #Input
     input = Input(shape=IMG_SHAPE)
@@ -157,7 +157,7 @@ def build_generator_improved(name=""):
     u1 = upsampling(d3, d2, GF*4)
     u2 = upsampling(u1, d1, GF*2)
     u3 = tconv2d(u2, GF)
-    output = tconv2d(u3, 3)
+    output = Conv2D(CHANNELS, kernel_size=4, strides=1, padding='same', activation='tanh')(u3)
 
     return Model(input, output)
 
@@ -202,12 +202,12 @@ def build_generator():
 
 g = build_generator_improved()
 # Build and compile the discriminators
-d_A = build_discriminator("A")
-d_B = build_discriminator("B")
+d_A = build_discriminator_improved()
+d_B = build_discriminator_improved()
 
 # Build the generators
-g_AB = build_generator()
-g_BA = build_generator()
+g_AB = build_generator_improved()
+g_BA = build_generator_improved()
 
 
 #Load
