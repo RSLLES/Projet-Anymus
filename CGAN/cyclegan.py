@@ -2,7 +2,7 @@ from __future__ import print_function, division
 import scipy
 
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
+from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, Add
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers import Conv2D, Conv2DTranspose
@@ -42,7 +42,10 @@ LAMBDA_CYCLE = 10.0               # Cycle-consistency loss
 LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
-OPTIMIZER = Adam(0.0002, 0.5)
+learning_rate = 0.0002
+discr_factor = 0.5
+OPTIMIZER = Adam(learning_rate, 0.5)
+OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
 
 
@@ -61,7 +64,6 @@ data_loader = DataLoader(dataset_name=dataset_name, img_res=(IMG_ROWS, IMG_COLS)
 #
 
 def build_discriminator_improved(name=""):
-
     def conv_layer(layer_input, filters, d = 1, f_size=4, s = 2, normalization=Tue):
         d = Conv2D(filters, kernel_size=f_size, strides=s, dilation_rate=(d,d), padding='same')(layer_input)
         d = LeakyReLU(alpha=0.2)(d)
@@ -84,7 +86,7 @@ def build_discriminator_improved(name=""):
     out = conv_layer(d9, 1, s=1)
 
     model = Model(img, out, name=name)
-    model.compile(loss='mse', optimizer=OPTIMIZER, metrics=['accuracy'])
+    model.compile(loss='mse', optimizer=OPTIMIZER_D, metrics=['accuracy'])
     return model
 
 def build_discriminator(name=""):
@@ -107,9 +109,57 @@ def build_discriminator(name=""):
     validity = Conv2D(1, kernel_size=4, strides=1, padding='same')(d4)
 
     model = Model(img, validity, name=name)
-    model.compile(loss='mse', optimizer=OPTIMIZER, metrics=['accuracy'])
+    model.compile(loss='mse', optimizer=OPTIMIZER_D, metrics=['accuracy'])
 
     return model
+
+def build_generator_improved(name=""):
+    def conv2d(layer_input, filters, s=2, f_size=4):
+        """Layers used during downsampling"""
+        d = Conv2D(filters, kernel_size=f_size, strides=s, padding='same')(layer_input)
+        d = LeakyReLU(alpha=0.2)(d)
+        d = InstanceNormalization()(d)
+        return d
+    def tconv2d(layer_input, filters, f_size=4):
+        l = Conv2DTranspose(filters, kernel_size=f_size, strides=2, padding="same")(layer_input)
+        l = InstanceNormalization(axis=-1)(l)
+        l = LeakyReLU(alpha=0.2)(l)
+        return l
+    def resnet(layer_input, filters):
+        r = Conv2D(filters, kernel_size=(3,3), strides=1, padding='same')(layer_input)
+        r = LeakyReLU(alpha=0.2)(r)
+        r = Conv2D(layer_input.shape[-1], kernel_size=(3,3), strides=1, padding='same')(r)
+        r = Add()([layer_input, r])
+        r = LeakyReLU(alpha=0.2)(r)
+        r = InstanceNormalization()(r)
+        return r
+    def resnet3(layer_input, filters):
+        for _ in range(3):
+            layer_input = resnet(layer_input, filters)
+        return layer_input
+    def downsampling(layer_input, filters, s=2):
+        d = conv2d(layer_input, filters, s=s)
+        d = resnet3(d, filters)
+        return d
+    def upsampling(layer_input, skip_layer, filters):
+        u = tconv2d(layer_input, skip_layer.shape[-1])
+        u = Add()([layer_input, u])
+        u = resnet3(filters)
+        return u
+    #Input
+    input = Input(shape=IMG_SHAPE)
+    d0 = conv2d(input, GF, s=1)
+    #Downsampling
+    d1 = downsampling(d0, GF*2)
+    d2 = downsampling(d1, GF*4)
+    d3 = downsampling(d2, GF*8)
+    #Upsampling
+    u1 = upsampling(d3, d2, GF*4)
+    u2 = upsampling(u1, d1, GF*2)
+    u3 = tconv2d(u2, GF)
+    output = tconv2d(u3, 3)
+
+    return Model(input, output)
 
 def build_generator():
     """U-Net Generator"""
@@ -150,6 +200,7 @@ def build_generator():
 
     return Model(d0, output_img)
 
+g = build_generator_improved()
 # Build and compile the discriminators
 d_A = build_discriminator("A")
 d_B = build_discriminator("B")
@@ -157,6 +208,7 @@ d_B = build_discriminator("B")
 # Build the generators
 g_AB = build_generator()
 g_BA = build_generator()
+
 
 #Load
 def load():
