@@ -21,7 +21,7 @@ import os
 # Sur l'entrainement
 BATCH_SIZE = 1
 EPOCHS = 200
-SAMPLE_INTERVAL = 200
+SAMPLE_INTERVAL = 500
 
 # Input shape
 IMG_ROWS = 128
