@@ -60,6 +60,33 @@ data_loader = DataLoader(dataset_name=dataset_name, img_res=(IMG_ROWS, IMG_COLS)
 # Construction des réseaux
 #
 
+def build_discriminator_improved(name=""):
+
+    def conv_layer(layer_input, filters, d = 1, f_size=4, s = 2, normalization=Tue):
+        d = Conv2D(filters, kernel_size=f_size, strides=s, dilation_rate=(d,d), padding='same')(layer_input)
+        d = LeakyReLU(alpha=0.2)(d)
+        if normalization:
+            d = InstanceNormalization()(d)
+        return d
+
+    img = Input(shape=IMG_SHAPE)
+    d1 = conv_layer(img, DF*2, normalization=False)
+    d2 = conv_layer(d1, DF*4)
+    d3 = conv_layer(d2, DF*8)
+    d4 = conv_layer(d3, DF*8, s=1)
+
+    d5 = conv_layer(d4, DF*8, d=2, s=1, f_size=(3,3))
+    d6 = conv_layer(d5, DF*8, d=4, s=1, f_size=(3,3))
+    d7 = conv_layer(d6, DF*8, d=8, s=1, f_size=(3,3))
+
+    d8 = Concatenate()([d4,d7])
+    d9 = conv_layer(d8, DF*8, s=1)
+    out = conv_layer(d9, 1, s=1)
+
+    model = Model(img, out, name=name)
+    model.compile(loss='mse', optimizer=OPTIMIZER, metrics=['accuracy'])
+    return model
+
 def build_discriminator(name=""):
 
     def d_layer(layer_input, filters, f_size=4, normalization=True):
