@@ -51,7 +51,7 @@ OPTIMIZER = Adam(0.0002, 0.5)
 ########################
 
 # Configure data loader
-dataset_name = 'apple2orange'
+dataset_name = 'face2manga'
 data_loader = DataLoader(dataset_name=dataset_name, img_res=(IMG_ROWS, IMG_COLS))
 
 
@@ -131,6 +131,20 @@ d_B = build_discriminator("B")
 g_AB = build_generator()
 g_BA = build_generator()
 
+#Load
+def load():
+    """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
+    if (os.path.isfile("Weights/d_A.h5") and os.path.isfile("Weights/g_AB.h5") 
+    and os.pathisfile("Weights/d_B.h5.") and os.path.isfile("Weights/g_BA.h5")):
+        d_A.load_weights("Weights/d_A.h5")
+        d_B.load_weights("Weights/d_B.h5")
+        g_AB.load_weights("Weights/g_AB.h5")
+        g_BA.load_weights("Weights/g_BA.h5")
+        print("Weights loaded")
+    else:
+        print("Missing weights files detected. Starting from scratch")
+load()
+
 def build_combined():
     # Input images from both domains
     img_A = Input(shape=IMG_SHAPE)
@@ -204,6 +218,12 @@ def sample_images(epoch, batch_i):
             cnt += 1
     fig.savefig("images/%s/%d_%d.png" % (dataset_name, epoch, batch_i))
     plt.close()
+def save():
+    """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
+    d_A.save_weights("Weights/d_A.h5")
+    d_B.save_weights("Weights/d_B.h5")
+    g_AB.save_weights("Weights/g_AB.h5")
+    g_BA.save_weights("Weights/g_BA.h5")
 
 start_time = datetime.datetime.now()
 
@@ -258,3 +278,4 @@ for epoch in range(EPOCHS):
         # If at save interval => save generated image samples
         if batch_i % SAMPLE_INTERVAL == 0:
             sample_images(epoch, batch_i)
+            save()
