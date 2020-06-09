@@ -285,6 +285,11 @@ def create_resnet(T):
 
 def create_minibatch_layer(T):
     #Layer de type minibatch pour essayer d'éviter l'effondrement des modes
+    #La structure vient de cet article https://papers.nips.cc/paper/6125-improved-techniques-for-training-gans.pdf
+    first_tensor = keras.layers.Dense(T.shape[-1], use_bias=False, activation=None)(T)
+
+    #On ajoute le layer créant les fonctions ainsi utilisées
+    
     pass
 
 
@@ -518,7 +523,7 @@ def load(d_A, d_B, gen_A_vers_B, gen_B_vers_A):
 ##################################
 #Nouvelle ancienne version
 dim = 128
-XFace,XManga = load_data()
+#XFace,XManga = load_data()
 
 #Création des discriminateur qui sont eux deja compilés
 d_Face, d_Face_inter = create_discriminator(dim, name="Face")

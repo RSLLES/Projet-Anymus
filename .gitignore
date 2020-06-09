@@ -1,13 +1,3 @@
-Horse2Zebra/
-Progression/
-Tour.rdp
-Manga/
-Trombi/
-t2m.npz
-2000Faces/
-2000Manga/
-105_classes_pins_dataset/
-f2m.npz
-f2m_2000.npz
-f2m_full.npz
-Weights/
+Dataset/
+CGAN_perso/Weights/
+CGAN_perso/f2m.npz
