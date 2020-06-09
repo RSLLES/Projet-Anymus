@@ -51,7 +51,7 @@ OPTIMIZER = Adam(0.0002, 0.5)
 ########################
 
 # Configure data loader
-dataset_name = 'apple2orange'
+dataset_name = 'face2manga'
 data_loader = DataLoader(dataset_name=dataset_name, img_res=(IMG_ROWS, IMG_COLS))
 
 
