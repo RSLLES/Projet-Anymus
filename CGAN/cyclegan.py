@@ -19,7 +19,7 @@ import os
 ### Constantes du programmes ###
 
 # Sur l'entrainement
-BATCH_SIZE = 1
+BATCH_SIZE = 5
 EPOCHS = 200
 SAMPLE_INTERVAL = 2000
 
