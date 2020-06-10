@@ -38,7 +38,7 @@ LAMBDA_ID = 2 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
 learning_rate = 0.0002
-discr_factor = 1
+discr_factor = 2
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
