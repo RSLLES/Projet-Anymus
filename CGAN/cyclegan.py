@@ -172,7 +172,7 @@ def build_generator_improved_own():
         """Layers used during upsampling"""
         u = UpSampling2D(size=2)(layer_input)
         if (drate > 1):
-            u = Conv2D(filters, kernel_size=f_size, strides=1, dilation_rate=d, padding='same')(u)
+            u = Conv2D(filters, kernel_size=f_size, strides=1, dilation_rate=drate, padding='same')(u)
             u = Conv2D(filters, kernel_size=f_size, strides=1, padding='same', activation='relu')(u)
         else:
             u = Conv2D(filters, kernel_size=f_size, strides=1, activation='relu', padding='same')(u)
@@ -187,13 +187,13 @@ def build_generator_improved_own():
 
     # Downsampling
     d1 = conv2d(d0, GF)
-    d2 = conv2d(d1, GF*2, d=2)
-    d3 = conv2d(d2, GF*4, d=4)
-    d4 = conv2d(d3, GF*8, d=4)
+    d2 = conv2d(d1, GF*2, drate=2)
+    d3 = conv2d(d2, GF*4, drate=4)
+    d4 = conv2d(d3, GF*8, drate=4)
 
     # Upsampling
-    u1 = deconv2d(d4, d3, GF*4, d=4)
-    u2 = deconv2d(u1, d2, GF*2, d=2)
+    u1 = deconv2d(d4, d3, GF*4, drate=4)
+    u2 = deconv2d(u1, d2, GF*2, drate=2)
     u3 = deconv2d(u2, d1, GF)
 
     u4 = UpSampling2D(size=2)(u3)
