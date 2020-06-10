@@ -159,19 +159,19 @@ def build_generator_improved():
 def build_generator_improved_own():
     """U-Net Generator"""
 
-    def conv2d(layer_input, filters, f_size=4, d=1):
+    def conv2d(layer_input, filters, f_size=4, drate=1):
         """Layers used during downsampling"""
         d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
-        if d > 1:
-            d = Conv2D(filters, kernel_size=f_size, strides=1, dilation_rate=d, padding='same')(d)
+        if drate > 1:
+            d = Conv2D(filters, kernel_size=f_size, strides=1, dilation_rate=drate, padding='same')(d)
         d = LeakyReLU(alpha=0.2)(d)
         d = InstanceNormalization()(d)
         return d
 
-    def deconv2d(layer_input, skip_input, filters, f_size=4, d=1, dropout_rate=0):
+    def deconv2d(layer_input, skip_input, filters, f_size=4, drate=1, dropout_rate=0):
         """Layers used during upsampling"""
         u = UpSampling2D(size=2)(layer_input)
-        if (d > 1):
+        if (drate > 1):
             u = Conv2D(filters, kernel_size=f_size, strides=1, dilation_rate=d, padding='same')(u)
             u = Conv2D(filters, kernel_size=f_size, strides=1, padding='same', activation='relu')(u)
         else:
