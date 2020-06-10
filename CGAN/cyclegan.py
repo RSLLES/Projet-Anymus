@@ -33,10 +33,6 @@ IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 GF = 32
 DF = 32
 
-# Calculate output shape of D (PatchGAN)
-PATCH = int(IMG_ROWS / 2**3)
-DISC_PATCH = (PATCH, PATCH, 1)
-
 # Loss weights
 LAMBDA_CYCLE = 10.0               # Cycle-consistency loss
 LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
@@ -307,8 +303,8 @@ def save():
 start_time = datetime.datetime.now()
 
 # Adversarial loss ground truths
-valid = np.ones((BATCH_SIZE,) + DISC_PATCH)
-fake = np.zeros((BATCH_SIZE,) + DISC_PATCH)
+valid = np.ones((BATCH_SIZE,) + d_A.output_shape[1:])
+fake = np.zeros((BATCH_SIZE,) + d_A.output_shape[1:])
 
 for epoch in range(EPOCHS):
     for batch_i, (imgs_A, imgs_B) in enumerate(data_loader.load_batch(BATCH_SIZE)):
