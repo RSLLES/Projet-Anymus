@@ -33,8 +33,8 @@ IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 GF, DF = 64, 32
 
 # Loss weights
-LAMBDA_CYCLE = 3               # Cycle-consistency loss
-LAMBDA_ID = 0.25 * LAMBDA_CYCLE    # Identity loss
+LAMBDA_CYCLE = 0.5               # Cycle-consistency loss
+LAMBDA_ID = 2 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
 learning_rate = 0.0002
