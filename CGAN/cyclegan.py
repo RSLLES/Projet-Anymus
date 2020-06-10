@@ -30,8 +30,7 @@ CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Number of filters in the first layer of G and D
-GF = 32
-DF = 32
+GF, DF = 64, 32
 
 # Loss weights
 LAMBDA_CYCLE = 10.0               # Cycle-consistency loss
@@ -85,7 +84,7 @@ def build_discriminator_improved(name=""):
     model.compile(loss='mse', optimizer=OPTIMIZER_D, metrics=['accuracy'])
     return model
 
-def build_discriminator(name=""):
+def build_discriminator():
 
     def d_layer(layer_input, filters, f_size=4, normalization=True):
         """Discriminator layer"""
@@ -109,7 +108,7 @@ def build_discriminator(name=""):
 
     return model
 
-def build_generator_improved(name=""):
+def build_generator_improved():
     def conv2d(layer_input, filters, s=2, f_size=4):
         """Layers used during downsampling"""
         d = Conv2D(filters, kernel_size=f_size, strides=s, padding='same')(layer_input)
@@ -157,6 +156,51 @@ def build_generator_improved(name=""):
 
     return Model(input, output)
 
+def build_generator_improved_own():
+    """U-Net Generator"""
+
+    def conv2d(layer_input, filters, f_size=4, d=1):
+        """Layers used during downsampling"""
+        d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
+        if d > 1:
+            d = Conv2D(filters, kernel_size=f_size, strides=1, dilation_rate=d, padding='same')(d)
+        d = LeakyReLU(alpha=0.2)(d)
+        d = InstanceNormalization()(d)
+        return d
+
+    def deconv2d(layer_input, skip_input, filters, f_size=4, d=1, dropout_rate=0):
+        """Layers used during upsampling"""
+        u = UpSampling2D(size=2)(layer_input)
+        if (d > 1):
+            u = Conv2D(filters, kernel_size=f_size, strides=1, dilation_rate=d, padding='same')(u)
+            u = Conv2D(filters, kernel_size=f_size, strides=1, padding='same', activation='relu')(u)
+        else:
+            u = Conv2D(filters, kernel_size=f_size, strides=1, activation='relu', padding='same')(u)
+        if dropout_rate:
+            u = Dropout(dropout_rate)(u)
+        u = InstanceNormalization()(u)
+        u = Concatenate()([u, skip_input])
+        return u
+
+    # Image input
+    d0 = Input(shape=IMG_SHAPE)
+
+    # Downsampling
+    d1 = conv2d(d0, GF)
+    d2 = conv2d(d1, GF*2, d=2)
+    d3 = conv2d(d2, GF*4, d=4)
+    d4 = conv2d(d3, GF*8, d=4)
+
+    # Upsampling
+    u1 = deconv2d(d4, d3, GF*4, d=4)
+    u2 = deconv2d(u1, d2, GF*2, d=2)
+    u3 = deconv2d(u2, d1, GF)
+
+    u4 = UpSampling2D(size=2)(u3)
+    output_img = Conv2D(CHANNELS, kernel_size=4, strides=1, padding='same', activation='tanh')(u4)
+
+    return Model(d0, output_img)
+
 def build_generator():
     """U-Net Generator"""
 
@@ -196,14 +240,14 @@ def build_generator():
 
     return Model(d0, output_img)
 
-g = build_generator_improved()
+
 # Build and compile the discriminators
-d_A = build_discriminator()
-d_B = build_discriminator()
+d_A = build_discriminator_improved()
+d_B = build_discriminator_improved()
 
 # Build the generators
-g_AB = build_generator()
-g_BA = build_generator()
+g_AB = build_generator_improved_own()
+g_BA = build_generator_improved_own()
 
 
 #Load
