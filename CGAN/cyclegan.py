@@ -84,7 +84,7 @@ def build_discriminator_improved(name=""):
     model.compile(loss='mse', optimizer=OPTIMIZER_D, metrics=['accuracy'])
     return model
 
-def build_discriminator():
+def build_discriminator(name=""):
 
     def d_layer(layer_input, filters, f_size=4, normalization=True):
         """Discriminator layer"""
