@@ -33,12 +33,12 @@ IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 GF, DF = 64, 32
 
 # Loss weights
-LAMBDA_CYCLE = 0.5               # Cycle-consistency loss
-LAMBDA_ID = 2 * LAMBDA_CYCLE    # Identity loss
+LAMBDA_CYCLE = 10               # Cycle-consistency loss
+LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
 learning_rate = 0.0002
-discr_factor = 2
+discr_factor = 0.3
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
@@ -242,12 +242,12 @@ def build_generator():
 
 
 # Build and compile the discriminators
-d_A = build_discriminator_improved()
-d_B = build_discriminator_improved()
+d_A = build_discriminator()
+d_B = build_discriminator()
 
 # Build the generators
-g_AB = build_generator_improved_own()
-g_BA = build_generator_improved_own()
+g_AB = build_generator()
+g_BA = build_generator()
 
 
 #Load
