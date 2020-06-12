@@ -24,7 +24,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 # Sur l'entrainement
 BATCH_SIZE = 15
 EPOCHS = 200
-SAMPLE_INTERVAL = 500
+SAMPLE_INTERVAL = 100
 
 # Input shape
 IMG_ROWS = 128
