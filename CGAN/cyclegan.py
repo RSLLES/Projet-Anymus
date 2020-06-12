@@ -38,7 +38,7 @@ LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
 learning_rate = 0.0002
-discr_factor = 0.3
+discr_factor = 0.25
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
@@ -59,29 +59,28 @@ data_loader = DataLoader(dataset_name=dataset_name, img_res=(IMG_ROWS, IMG_COLS)
 #
 
 def build_discriminator_improved(name=""):
-    def conv_layer(layer_input, filters, d = 1, f_size=4, s = 2, normalization=True):
-        d = Conv2D(filters, kernel_size=f_size, strides=s, dilation_rate=(d,d), padding='same')(layer_input)
+    def d_layer(layer_input, filters, f_size=4, normalization=True, drate=1):
+        d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
+        if drate > 1:
+            dprime = Conv2D(filters, kernel_size=f_size, dilation_rate=drate, strides=2, padding='same')(layer_input)
+            d = Concatenate()[d,dprime]
         d = LeakyReLU(alpha=0.2)(d)
         if normalization:
             d = InstanceNormalization()(d)
         return d
 
     img = Input(shape=IMG_SHAPE)
-    d1 = conv_layer(img, DF*2, normalization=False)
-    d2 = conv_layer(d1, DF*4)
-    d3 = conv_layer(d2, DF*8)
-    d4 = conv_layer(d3, DF*8, s=1)
 
-    d5 = conv_layer(d4, DF*8, d=2, s=1, f_size=(3,3))
-    d6 = conv_layer(d5, DF*8, d=4, s=1, f_size=(3,3))
-    d7 = conv_layer(d6, DF*8, d=8, s=1, f_size=(3,3))
+    d1 = d_layer(img, DF, drate=8, normalization=False)
+    d2 = d_layer(d1, DF*2, drate=4)
+    d3 = d_layer(d2, DF*4, drate=2)
+    d4 = d_layer(d3, DF*8)
 
-    d8 = Concatenate()([d4,d7])
-    d9 = conv_layer(d8, DF*8, s=1)
-    out = conv_layer(d9, 1, s=1)
+    validity = Conv2D(1, kernel_size=4, strides=1, padding='same')(d4)
 
-    model = Model(img, out, name=name)
+    model = Model(img, validity, name=name)
     model.compile(loss='mse', optimizer=OPTIMIZER_D, metrics=['accuracy'])
+
     return model
 
 def build_discriminator(name=""):
@@ -242,8 +241,8 @@ def build_generator():
 
 
 # Build and compile the discriminators
-d_A = build_discriminator()
-d_B = build_discriminator()
+d_A = build_discriminator_improved()
+d_B = build_discriminator_improved()
 
 # Build the generators
 g_AB = build_generator()
@@ -254,7 +253,7 @@ g_BA = build_generator()
 def load():
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
     if (os.path.isfile("Weights/d_A.h5") and os.path.isfile("Weights/g_AB.h5") 
-    and os.pathisfile("Weights/d_B.h5.") and os.path.isfile("Weights/g_BA.h5")):
+    and os.path.isfile("Weights/d_B.h5.") and os.path.isfile("Weights/g_BA.h5")):
         d_A.load_weights("Weights/d_A.h5")
         d_B.load_weights("Weights/d_B.h5")
         g_AB.load_weights("Weights/g_AB.h5")
