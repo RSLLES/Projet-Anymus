@@ -62,7 +62,8 @@ def build_discriminator_improved(name=""):
     def d_layer(layer_input, filters, f_size=4, normalization=True, drate=1):
         d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
         if drate > 1:
-            dprime = Conv2D(filters, kernel_size=f_size, dilation_rate=drate, strides=2, padding='same')(layer_input)
+            dprime = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
+            dprime = Conv2D(filters, kernel_size=f_size, dilation_rate=drate, padding='same')(layer_input)
             d = Concatenate()[d,dprime]
         d = LeakyReLU(alpha=0.2)(d)
         if normalization:
