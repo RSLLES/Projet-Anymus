@@ -64,7 +64,7 @@ def build_discriminator_improved(name=""):
         if drate > 1:
             dprime = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
             dprime = Conv2D(filters, kernel_size=f_size, dilation_rate=drate, padding='same')(dprime)
-            d = Concatenate()[d,dprime]
+            d = Concatenate()([d,dprime])
         d = LeakyReLU(alpha=0.2)(d)
         if normalization:
             d = InstanceNormalization()(d)
