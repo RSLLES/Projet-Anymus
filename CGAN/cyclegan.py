@@ -16,6 +16,9 @@ from data_loader import DataLoader
 import numpy as np
 import os
 
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
 ### Constantes du programmes ###
 
 # Sur l'entrainement
