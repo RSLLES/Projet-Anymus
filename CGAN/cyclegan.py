@@ -22,9 +22,9 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 ### Constantes du programmes ###
 
 # Sur l'entrainement
-BATCH_SIZE = 15
+BATCH_SIZE = 7
 EPOCHS = 200
-SAMPLE_INTERVAL = 100
+SAMPLE_INTERVAL = 200
 
 # Input shape
 IMG_ROWS = 128
