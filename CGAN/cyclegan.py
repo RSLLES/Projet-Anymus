@@ -22,7 +22,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 ### Constantes du programmes ###
 
 # Sur l'entrainement
-BATCH_SIZE = 7
+BATCH_SIZE = 5
 EPOCHS = 200
 SAMPLE_INTERVAL = 200
 
@@ -307,15 +307,19 @@ combined = build_combined()
 # 
 
 def sample_images(epoch, batch_i, gif=False):
-    os.makedirs('images/%s' % dataset_name, exist_ok=True)
+    if gif:
+        os.makedirs('images/gif/%s' % dataset_name, exist_ok=True)
+    else:
+        os.makedirs('images/%s' % dataset_name, exist_ok=True)
+
     r, c = 2, 3
 
     if gif:
-        imgs_A = data_loader.load_img('datasets/face2manga/testA/n07740461_1541.jpg')
-        imgs_B = data_loader.load_img('datasets/face2manga/testB/n07749192_4241.jpg')
+        imgs_A = data_loader.load_img('datasets/face2manga/testA/gif.jpg')
+        imgs_B = data_loader.load_img('datasets/face2manga/testB/gif.jpg')
     else:
         imgs_A = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
-        imgs_B = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
+        imgs_B = data_loader.load_data(domain="B", batch_size=1, is_testing=True)
 
     # Translate images to the other domain
     fake_B = g_AB.predict(imgs_A)
@@ -338,7 +342,10 @@ def sample_images(epoch, batch_i, gif=False):
             axs[i, j].set_title(titles[j])
             axs[i,j].axis('off')
             cnt += 1
-    fig.savefig("images/%s/%d_%d.png" % (dataset_name, epoch, batch_i))
+    if gif:
+        fig.savefig("images/gif/%s/%d_%d.png" % (dataset_name, epoch, batch_i))
+    else:
+        fig.savefig("images/%s/%d_%d.png" % (dataset_name, epoch, batch_i))
     plt.close()
 def save():
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
@@ -400,4 +407,5 @@ for epoch in range(EPOCHS):
         # If at save interval => save generated image samples
         if batch_i % SAMPLE_INTERVAL == 0:
             sample_images(epoch, batch_i)
+            sample_images(epoch, batch_i, gif=True)
             save()
