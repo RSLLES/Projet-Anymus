@@ -245,8 +245,8 @@ def build_generator():
 
 
 # Build and compile the discriminators
-d_A = build_discriminator_improved()
-d_B = build_discriminator_improved()
+d_A = build_discriminator()
+d_B = build_discriminator()
 
 # Build the generators
 g_AB = build_generator()
@@ -306,16 +306,16 @@ combined = build_combined()
 # Lancement de lentrainement
 # 
 
-def sample_images(epoch, batch_i):
+def sample_images(epoch, batch_i, gif=False):
     os.makedirs('images/%s' % dataset_name, exist_ok=True)
     r, c = 2, 3
 
-    imgs_A = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
-    imgs_B = data_loader.load_data(domain="B", batch_size=1, is_testing=True)
-
-    # Demo (for GIF)
-    #imgs_A = self.data_loader.load_img('datasets/apple2orange/testA/n07740461_1541.jpg')
-    #imgs_B = self.data_loader.load_img('datasets/apple2orange/testB/n07749192_4241.jpg')
+    if gif:
+        imgs_A = data_loader.load_img('datasets/face2manga/testA/n07740461_1541.jpg')
+        imgs_B = data_loader.load_img('datasets/face2manga/testB/n07749192_4241.jpg')
+    else:
+        imgs_A = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
+        imgs_B = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
 
     # Translate images to the other domain
     fake_B = g_AB.predict(imgs_A)
