@@ -308,7 +308,7 @@ combined = build_combined()
 
 def sample_images(epoch, batch_i, gif=False):
     if gif:
-        os.makedirs('images/gif/%s' % dataset_name, exist_ok=True)
+        os.makedirs('images/%s/gif' % dataset_name, exist_ok=True)
     else:
         os.makedirs('images/%s' % dataset_name, exist_ok=True)
 
@@ -343,7 +343,7 @@ def sample_images(epoch, batch_i, gif=False):
             axs[i,j].axis('off')
             cnt += 1
     if gif:
-        fig.savefig("images/gif/%s/%d_%d.png" % (dataset_name, epoch, batch_i))
+        fig.savefig("images/%s/gif/%d_%d.png" % (dataset_name, epoch, batch_i))
     else:
         fig.savefig("images/%s/%d_%d.png" % (dataset_name, epoch, batch_i))
     plt.close()
