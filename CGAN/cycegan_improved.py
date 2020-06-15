@@ -36,7 +36,7 @@ IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 GF, DF = 16, 16
 
 # Loss weights
-LAMBDA_CYCLE = 7               # Cycle-consistency loss
+LAMBDA_CYCLE = 8               # Cycle-consistency loss
 LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
