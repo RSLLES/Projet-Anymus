@@ -22,9 +22,9 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 ### Constantes du programmes ###
 
 # Sur l'entrainement
-BATCH_SIZE = 5
+BATCH_SIZE = 6
 EPOCHS = 200
-SAMPLE_INTERVAL = 300
+SAMPLE_INTERVAL = 400
 
 # Input shape
 IMG_ROWS = 128
@@ -41,7 +41,7 @@ LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
 learning_rate = 0.0002
-discr_factor = 1
+discr_factor = 0.3
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
