@@ -45,7 +45,7 @@ discr_factor = 0.3
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
-START_EPO = 3
+START_EPO = 21
 
 
 
