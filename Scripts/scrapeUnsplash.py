@@ -1,4 +1,3 @@
-#Les données sont sur le site https://myanimelist.net/character.php
 import requests
 from json import loads
 import urllib.request
