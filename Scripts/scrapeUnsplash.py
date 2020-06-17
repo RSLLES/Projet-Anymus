@@ -41,7 +41,8 @@ for url in urls:
                 #On save
                 im.thumbnail((1024,1024), Image.ANTIALIAS)
                 im.save("Unsplash/{}.jpg".format(name), quality=95)
-                print("Done {}".format(name))
+                i+=1
+                print("[{}]Done {}".format(i,name))
 
             except:
                 print("Erreur de traitement de {}".format(name))
