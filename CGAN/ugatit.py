@@ -17,14 +17,14 @@ from data_loader import DataLoader
 import tensorflow as tf
 import numpy as np
 import os
-
+import keras.backend as K
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 ### Constantes du programmes ###
 
 # Sur l'entrainement
-BATCH_SIZE = 6
+BATCH_SIZE = 1 #FIXE
 EPOCHS = 200
 SAMPLE_INTERVAL = 400
 
@@ -35,10 +35,11 @@ CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Number of filters in the first layer of G and D
-GF, DF = 64, 64
+GF, DF = 32, 32
 
 # Loss weights
-LAMBDA_CYCLE = 8               # Cycle-consistency loss
+LAMBDA_AUX = 100
+LAMBDA_CYCLE = 10               # Cycle-consistency loss
 LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
@@ -47,7 +48,7 @@ discr_factor = 0.3
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
-START_EPO = 21
+START_EPO = 0
 
 
 
@@ -57,6 +58,7 @@ START_EPO = 21
 
 # Configure data loader
 dataset_name = 'ugatit'
+wf = "Weights/{}/".format(dataset_name)
 data_loader = DataLoader(dataset_name=dataset_name, img_res=(IMG_ROWS, IMG_COLS))
 
 
@@ -78,23 +80,24 @@ class AdaLIN(Layer):
     def build(self, input_shape):
         if (len(input_shape) != 3):
             raise ValueError("Il faut donner dans l'ordre le layer, gamma et beta")
+        self.ch = input_shape[0][-1]
+        self.rho = self.add_weight(shape=(self.ch,), initializer="ones", trainable=True, name="rho",
+                        constraint=lambda x: tf.clip_by_value(x, clip_value_min=0.0, clip_value_max=1.0))
 
     def call(self, inputs):
         x, gamma, beta = inputs[0], inputs[1], inputs[2]
-        ch = x.shape[-1]
         ins_mean, ins_sigma = tf.nn.moments(x, axes=[1, 2], keepdims=True)
         x_ins = (x - ins_mean) / (tf.sqrt(ins_sigma + self.eps))
         ln_mean, ln_sigma = tf.nn.moments(x, axes=[1, 2, 3], keepdims=True)
         x_ln = (x - ln_mean) / (tf.sqrt(ln_sigma + self.eps))
-        rho = tf.Variable(np.ones(ch), dtype = np.float32, name="rho", shape=[ch], constraint=lambda x: tf.clip_by_value(x, clip_value_min=0.0, clip_value_max=1.0))
         if self.smoothing :
-            rho = tf.clip_by_value(rho - tf.constant(0.1), 0.0, 1.0)
-        x_hat = rho * x_ins + (1 - rho) * x_ln
+            self.rho = tf.clip_by_value(self.rho - tf.constant(0.1), 0.0, 1.0)
+        x_hat = self.rho * x_ins + (1 - self.rho) * x_ln
         x_hat = x_hat * gamma + beta
         return x_hat
 
 class AdaLIN_simple(Layer):
-    """Meme structure que précédemment mais en fixant gamma et beta a respectivement 0 et 1"""
+    """Meme structure que précédemment mais en fixant gamma et beta a respectivement 1 et 0"""
     def __init__(self, smoothing=True, eps = 1e-5):
         super(AdaLIN_simple, self).__init__()
         self.smoothing = smoothing
@@ -102,8 +105,10 @@ class AdaLIN_simple(Layer):
         
     def build(self, input_shape):
         self.ch = input_shape[-1]
-        self.gamma = tf.Variable(np.ones(self.ch), dtype = np.float32, name="gamma", shape=[self.ch])
-        self.beta = tf.Variable(np.zeros(self.ch), dtype = np.float32, name="gamma", shape=[self.ch])
+        self.gamma = self.add_weight(shape=(self.ch,), initializer="ones", trainable=True, name="gamma",)
+        self.beta = self.add_weight(shape=(self.ch,), initializer="zeros", trainable=True, name="beta",)
+        self.rho = self.add_weight(shape=(self.ch,), initializer="zeros", trainable=True, name="rho", 
+                        constraint=lambda x: tf.clip_by_value(x, clip_value_min=0.0, clip_value_max=1.0))
 
     def call(self, inputs):
         x = inputs
@@ -111,16 +116,16 @@ class AdaLIN_simple(Layer):
         x_ins = (x - ins_mean) / (tf.sqrt(ins_sigma + self.eps))
         ln_mean, ln_sigma = tf.nn.moments(x, axes=[1, 2, 3], keepdims=True)
         x_ln = (x - ln_mean) / (tf.sqrt(ln_sigma + self.eps))
-        rho = tf.Variable(np.zeros(self.ch), dtype = np.float32, name="rho", shape=[self.ch], constraint=lambda x: tf.clip_by_value(x, clip_value_min=0.0, clip_value_max=1.0))
         if self.smoothing :
-            rho = tf.clip_by_value(rho - tf.constant(0.1), 0.0, 1.0)
-        x_hat = rho * x_ins + (1 - rho) * x_ln
+            self.rho = tf.clip_by_value(self.rho - tf.constant(0.1), 0.0, 1.0)
+        x_hat = self.rho * x_ins + (1 - self.rho) * x_ln
         x_hat = x_hat * self.gamma + self.beta
         return x_hat
 
-class MUL(Layer):
+class AuxClass(Layer):
+    """Implémente ma version du classifier auxiliaire"""
     def __init__(self):
-        super(MUL, self).__init__()
+        super(AuxClass, self).__init__()
 
     def build(self, input_shape):
         if (len(input_shape) != 2):
@@ -133,13 +138,20 @@ class MUL(Layer):
         self.b = self.add_weight(
             shape=(1,), initializer="random_normal", trainable=True
         )
-        super(MUL, self).build(input_shape)
+        super(AuxClass, self).build(input_shape)
 
     def call(self, inputs):
         r1 = tf.matmul(inputs[0], self.w) + self.b
         w = tf.gather(tf.transpose(tf.nn.bias_add(self.w, self.b)), 0)
         r2 = tf.multiply(inputs[1],w)
+        # Pour debugger
+        #output_shapes = self.compute_output_shape([K.int_shape(i) for i in inputs])
+        #r1.set_shape(output_shapes[0])
+        #r2.set_shape(output_shapes[1])
         return [r1,r2]
+
+    def compute_output_shape(self, input_shape):
+        return [(input_shape[0][0], 1), input_shape[1]]
 
 # 
 # Briques
@@ -198,8 +210,8 @@ def build_generator(name=""):
     # Création de la CLASSE Activation Map (CAM) en Max et en Average
     g_mp, g_ap = GlobalMaxPooling2D()(g), GlobalAveragePooling2D()(g)
 
-    cam_m, g_m = MUL()([g_mp, g])
-    cam_a, g_a = MUL()([g_ap, g])
+    cam_m, g_m = AuxClass()([g_mp, g])
+    cam_a, g_a = AuxClass()([g_ap, g])
 
     cam = Concatenate()([cam_m, cam_a])
     g = Concatenate()([g_m, g_a])
@@ -226,7 +238,10 @@ def build_generator(name=""):
     # Fin du réseau
     g = Conv2D(CHANNELS, kernel_size=4, strides=1, padding='same', activation='tanh')(g)
 
-    return Model(entree, g, name="gen_{}".format(name)), cam
+    g_model = Model(entree, g, name="gen_{}".format(name))
+    aux_model = Model(entree, cam, name="aux_gen_{}".format(name))
+
+    return g_model, aux_model
 
 def build_discriminator(name=""):
     # Image input
@@ -240,37 +255,46 @@ def build_discriminator(name=""):
     # Création de la CLASSE Activation Map (CAM) en Max et en Average
     d_mp, d_ap = GlobalMaxPooling2D()(d), GlobalAveragePooling2D()(d)
 
-    cam_m, d_m = MUL()([d_mp, d])
-    cam_a, d_a = MUL()([d_ap, d])
+    A1, A2 = AuxClass(), AuxClass()
+    cam_m, d_m = A1([d_mp, d])
+    cam_a, d_a = A2([d_ap, d])
 
-    cam = Concatenate()([cam_m, cam_a])
-    g = Concatenate()([d_m, d_a])
+    Conca1, Conca2 = Concatenate(), Concatenate()
+    cam = Conca1([cam_m, cam_a])
+    d = Conca2([d_m, d_a])
 
-    d = conv2d(d, GF*4, f_size=1, strides=1)
+    d = conv2d(d, DF*4, f_size=1, strides=1)
 
     # Final
     d = Conv2D(1, kernel_size=4, strides=1, padding='same')(d)
 
-    return Model(entree, d, name="disc_{}".format(name)), cam
+    d_model = Model(entree, d, name="disc_{}".format(name))
+    d_model.compile(loss='mse', optimizer=OPTIMIZER, metrics=['accuracy'])
+
+    aux_model = Model(entree, cam, name="aux_d_{}".format(name))
+    aux_model.compile(loss='mse', optimizer=OPTIMIZER, metrics=['accuracy'])
+
+    return d_model,aux_model 
 
 # Build and compile the discriminators
-d_A, cam_d_A = build_discriminator("A")
-d_B, cam_d_B = build_discriminator("B")
+d_A, aux_d_A = build_discriminator("A")
+d_B, aux_d_B = build_discriminator("B")
 
 # Build the generators
-g_AB, cam_g_AB = build_generator("AB")
-g_BA, cam_g_BA = build_generator("BA")
+g_AB, aux_g_AB = build_generator("AB")
+g_BA, aux_g_BA = build_generator("BA")
 
 
 #Load
 def load():
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
-    if (os.path.isfile("Weights/d_A.h5") and os.path.isfile("Weights/g_AB.h5") 
-    and os.path.isfile("Weights/d_B.h5.") and os.path.isfile("Weights/g_BA.h5")):
-        d_A.load_weights("Weights/d_A.h5")
-        d_B.load_weights("Weights/d_B.h5")
-        g_AB.load_weights("Weights/g_AB.h5")
-        g_BA.load_weights("Weights/g_BA.h5")
+    os.makedirs(wf, exist_ok=True)
+    if (os.path.isfile(wf + "d_A.h5") and os.path.isfile(wf + "g_AB.h5") 
+    and os.path.isfile(wf + "d_B.h5") and os.path.isfile(wf + "g_BA.h5")):
+        d_A.load_weights(wf + "d_A.h5")
+        d_B.load_weights(wf + "d_B.h5")
+        g_AB.load_weights(wf + "g_AB.h5")
+        g_BA.load_weights(wf + "g_BA.h5")
         print("Weights loaded")
     else:
         print("Missing weights files detected. Starting from scratch")
@@ -284,9 +308,17 @@ def build_combined():
     # Translate images to the other domain
     fake_B = g_AB(img_A)
     fake_A = g_BA(img_B)
+
+    # Sortie Auxilliary classifier des générateurs
+    aux_A_dans_AB = aux_g_AB(img_A)
+    aux_B_dans_AB = aux_g_AB(img_B)
+    aux_A_dans_BA = aux_g_BA(img_A)
+    aux_B_dans_BA = aux_g_BA(img_B)
+
     # Translate images back to original domain
     reconstr_A = g_BA(fake_B)
     reconstr_B = g_AB(fake_A)
+
     # Identity mapping of images
     img_A_id = g_BA(img_A)
     img_B_id = g_AB(img_B)
@@ -294,20 +326,36 @@ def build_combined():
     # For the combined model we will only train the generators
     d_A.trainable = False
     d_B.trainable = False
+    aux_d_A.trainable = False
+    aux_d_B.trainable = False
 
     # Discriminators determines validity of translated images
     valid_A = d_A(fake_A)
     valid_B = d_B(fake_B)
 
     # Combined model trains generators to fool discriminators
-    model = Model(inputs=[img_A, img_B],outputs=[ valid_A, valid_B, reconstr_A, reconstr_B, img_A_id, img_B_id])
-    model.compile(  loss=['mse', 'mse', 'mae', 'mae','mae', 'mae'],
-                    loss_weights=[1, 1,LAMBDA_CYCLE, LAMBDA_CYCLE, LAMBDA_ID, LAMBDA_ID ],
+    model = Model(inputs=[img_A, img_B], outputs=[  valid_A, valid_B, 
+                                                    reconstr_A, reconstr_B, 
+                                                    img_A_id, img_B_id,
+                                                    aux_A_dans_AB, aux_B_dans_BA,
+                                                    aux_A_dans_BA, aux_B_dans_AB])
+    model.compile(  loss=[  'mse', 'mse', 
+                            'mae', 'mae',
+                            'mae', 'mae',
+                            'mse', 'mse',
+                            'mse', 'mse'],
+                    loss_weights=[  1, 1,
+                                    LAMBDA_CYCLE, LAMBDA_CYCLE, 
+                                    LAMBDA_ID, LAMBDA_ID,
+                                    LAMBDA_AUX, LAMBDA_AUX,
+                                    LAMBDA_AUX, LAMBDA_AUX ],
         optimizer=OPTIMIZER)
 
     return model
 
 # Build the combined model to train generators
+
+
 combined = build_combined()
 
 
@@ -356,18 +404,23 @@ def sample_images(epoch, batch_i, gif=False):
     else:
         fig.savefig("images/%s/%d_%d.png" % (dataset_name, epoch, batch_i))
     plt.close()
+
 def save():
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
-    d_A.save_weights("Weights/d_A.h5")
-    d_B.save_weights("Weights/d_B.h5")
-    g_AB.save_weights("Weights/g_AB.h5")
-    g_BA.save_weights("Weights/g_BA.h5")
+    os.makedirs(wf, exist_ok=True)
+    d_A.save_weights(wf + "d_A.h5")
+    d_B.save_weights(wf + "d_B.h5")
+    g_AB.save_weights(wf + "g_AB.h5")
+    g_BA.save_weights(wf + "g_BA.h5")
 
 start_time = datetime.datetime.now()
 
 # Adversarial loss ground truths
 valid = np.ones((BATCH_SIZE,) + d_A.output_shape[1:])
 fake = np.zeros((BATCH_SIZE,) + d_A.output_shape[1:])
+
+aux_valid = np.ones((BATCH_SIZE,) + aux_d_A.output_shape[1:])
+aux_fake = np.zeros((BATCH_SIZE,) + aux_d_A.output_shape[1:])
 
 for epoch in range(START_EPO,EPOCHS):
     for batch_i, (imgs_A, imgs_B) in enumerate(data_loader.load_batch(BATCH_SIZE)):
@@ -379,6 +432,19 @@ for epoch in range(START_EPO,EPOCHS):
         # Translate images to opposite domain
         fake_B = g_AB.predict(imgs_A)
         fake_A = g_BA.predict(imgs_B)
+
+        # Train the discriminators auxiliary classifier
+        aux_dA_loss_real = aux_d_A.train_on_batch(imgs_A, aux_valid)
+        aux_dA_loss_fake = aux_d_A.train_on_batch(fake_A, aux_fake)
+        aux_dA_loss = 0.5 * np.add(aux_dA_loss_real, aux_dA_loss_fake)
+
+        aux_dB_loss_real = aux_d_B.train_on_batch(imgs_B, aux_valid)
+        aux_dB_loss_fake = aux_d_B.train_on_batch(fake_B, aux_fake)
+        aux_dB_loss = 0.5 * np.add(aux_dB_loss_real, aux_dB_loss_fake)
+
+        # Total auxiliary classifier loss
+        aux_d_loss = 0.5 * np.add(aux_dA_loss, aux_dB_loss)
+
 
         # Train the discriminators (original images = real / translated = Fake)
         dA_loss_real = d_A.train_on_batch(imgs_A, valid)
@@ -398,15 +464,20 @@ for epoch in range(START_EPO,EPOCHS):
         # ------------------
 
         # Train the generators
-        g_loss = combined.train_on_batch([imgs_A, imgs_B],[valid, valid,imgs_A, imgs_B,imgs_A, imgs_B])
+        g_loss = combined.train_on_batch([imgs_A, imgs_B],[ valid, valid,
+                                                            imgs_A, imgs_B,
+                                                            imgs_A, imgs_B,
+                                                            aux_valid, aux_valid,
+                                                            aux_fake, aux_fake])
 
         elapsed_time = datetime.datetime.now() - start_time
 
         # Plot the progress
-        print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] time: %s " \
+        print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [AuxD loss : %f, acc : %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] time: %s " \
                                                                 % ( epoch, EPOCHS,
                                                                     batch_i, data_loader.n_batches,
                                                                     d_loss[0], 100*d_loss[1],
+                                                                    aux_d_loss[0], 100*aux_d_loss[1],
                                                                     g_loss[0],
                                                                     np.mean(g_loss[1:3]),
                                                                     np.mean(g_loss[3:5]),
