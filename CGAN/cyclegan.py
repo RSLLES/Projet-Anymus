@@ -45,17 +45,13 @@ discr_factor = 0.3
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
-#Folders
-wf = "Weights/{}/".format(dataset_name)
-
-
-
 ########################
 ##### Programme ########
 ########################
 
 # Configure data loader
 dataset_name = 'landscape2myazaki'
+wf = "Weights/{}/".format(dataset_name)
 data_loader = DataLoader(dataset_name=dataset_name, img_res=(IMG_ROWS, IMG_COLS))
 
 #
