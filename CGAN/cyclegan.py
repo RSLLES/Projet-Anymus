@@ -45,6 +45,9 @@ discr_factor = 0.3
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
+#Folders
+wf = "Weights/{}/".format(dataset_name)
+
 
 
 ########################
@@ -136,13 +139,13 @@ g_BA = build_generator()
 #Load
 def load():
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
-    os.makedirs("Weights/{}/".format(dataset_name), exist_ok=True)
-    if (os.path.isfile("Weights/{}/d_A.h5".format(dataset_name)) and os.path.isfile("Weights/{}/g_AB.h5".format(dataset_name)) 
-    and os.path.isfile("Weights/{}/d_B.h5.".format(dataset_name)) and os.path.isfile("Weights/{}/g_BA.h5".format(dataset_name))):
-        d_A.load_weights("Weights/{}/d_A.h5".format(dataset_name))
-        d_B.load_weights("Weights/{}/d_B.h5".format(dataset_name))
-        g_AB.load_weights("Weights/{}/g_AB.h5".format(dataset_name))
-        g_BA.load_weights("Weights/{}/g_BA.h5".format(dataset_name))
+    os.makedirs(wf, exist_ok=True)
+    if (os.path.isfile(wf + "d_A.h5") and os.path.isfile(wf + "g_AB.h5") 
+    and os.path.isfile(wf + "d_B.h5") and os.path.isfile(wf + "g_BA.h5")):
+        d_A.load_weights(wf + "d_A.h5")
+        d_B.load_weights(wf + "d_B.h5")
+        g_AB.load_weights(wf + "g_AB.h5")
+        g_BA.load_weights(wf + "g_BA.h5")
         print("Weights loaded")
     else:
         print("Missing weights files detected. Starting from scratch")
@@ -228,12 +231,14 @@ def sample_images(epoch, batch_i, gif=False):
     else:
         fig.savefig("images/%s/%d_%d.png" % (dataset_name, epoch, batch_i))
     plt.close()
+
 def save():
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
-    d_A.save_weights("Weights/{}/d_A.h5".format(dataset_name))
-    d_B.save_weights("Weights/{}/d_B.h5".format(dataset_name))
-    g_AB.save_weights("Weights/{}/g_AB.h5".format(dataset_name))
-    g_BA.save_weights("Weights/{}/g_BA.h5".format(dataset_name))
+    os.makedirs(wf, exist_ok=True)
+    d_A.save_weights(wf + "d_A.h5")
+    d_B.save_weights(wf + "d_B.h5")
+    g_AB.save_weights(wf + "g_AB.h5")
+    g_BA.save_weights(wf + "g_BA.h5")
 
 start_time = datetime.datetime.now()
 
