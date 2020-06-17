@@ -136,6 +136,7 @@ g_BA = build_generator()
 #Load
 def load():
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
+    os.makedirs("Weights/{}/".format(dataset_name), exist_ok=True)
     if (os.path.isfile("Weights/{}/d_A.h5".format(dataset_name)) and os.path.isfile("Weights/{}/g_AB.h5".format(dataset_name)) 
     and os.path.isfile("Weights/{}/d_B.h5.".format(dataset_name)) and os.path.isfile("Weights/{}/g_BA.h5".format(dataset_name))):
         d_A.load_weights("Weights/{}/d_A.h5".format(dataset_name))
