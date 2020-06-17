@@ -22,7 +22,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 ### Constantes du programmes ###
 
 # Sur l'entrainement
-BATCH_SIZE = 3
+BATCH_SIZE = 5
 EPOCHS = 200
 SAMPLE_INTERVAL = 200
 
@@ -33,7 +33,7 @@ CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Number of filters in the first layer of G and D
-GF, DF = 32, 32
+GF, DF = 64, 64
 
 # Loss weights
 LAMBDA_CYCLE = 10               # Cycle-consistency loss
@@ -41,7 +41,7 @@ LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
 
 #Optimize
 learning_rate = 0.0002
-discr_factor = 0.3
+discr_factor = 1
 OPTIMIZER = Adam(learning_rate, 0.5)
 OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
 
