@@ -38,7 +38,7 @@ CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Number of filters in the first layer of G and D
-GF, DF = 64, 64
+GF, DF = 32, 32
 N_RESNET = 4
 
 # Loss weights
@@ -400,7 +400,10 @@ def sample_images(epoch, batch_i, gif=False):
 
     def show_row(r_i, img, hm_g, fake, hm_d, reconstr):
         def show(i,j, im, is_heatmap=False):
-            axs[i,j].imshow(im[0,...])
+            if is_heatmap:
+                axs[i,j].imshow(im[0,...], vmin=-1., vmax=1., cmap='RdBu_r')
+            else:
+                axs[i,j].imshow(im[0,...])
             axs[i,j].set_title(titles[j])
             axs[i,j].axis('off')
         # Image normale
