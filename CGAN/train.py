@@ -10,7 +10,6 @@ from reseaux import *
 from data_loader import DataLoader
 from utils import *
 
-
 #
 # Constantes sur l'entrainement
 # 
