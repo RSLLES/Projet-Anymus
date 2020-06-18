@@ -378,11 +378,11 @@ def sample_images(epoch, batch_i, gif=False):
         imgs_A = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
         imgs_B = data_loader.load_data(domain="B", batch_size=1, is_testing=True)
 
-    # Rescale btw 0 - 1
+    # Rescale btw 0 - 1 img initially btw -1 and 1
     def rescale(img):
         return 0.5*img + 0.5
 
-    # Rescale heat map
+    # Rescale heat map btw 0 and 1
     def rescale_hm(hm):
         m,M = np.min(hm), np.max(hm)
         return (hm-m)/(M-m)
@@ -408,7 +408,7 @@ def sample_images(epoch, batch_i, gif=False):
         axs[r_i,0].imshow(img[0,...])
         standart(r_i, 0)
         # Heatmap
-        axs[r_i,1].imshow(hm[0,...], cmap='hot', interpolation='nearest')
+        axs[r_i,1].imshow(hm[0,...], cmap='viridis', interpolation='nearest')
         standart(r_i, 1)
         # Fake
         axs[r_i,2].imshow(fake[0,...])
