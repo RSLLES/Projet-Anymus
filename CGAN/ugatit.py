@@ -30,13 +30,13 @@ EPOCHS = 200
 SAMPLE_INTERVAL = 400
 
 # Input shape
-IMG_ROWS = 256
-IMG_COLS = 256
+IMG_ROWS = 128
+IMG_COLS = 128
 CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Number of filters in the first layer of G and D
-GF, DF = 64, 64
+GF, DF = 64,64
 N_RESNET = 4
 
 # Loss weights
