@@ -36,11 +36,12 @@ IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Number of filters in the first layer of G and D
 GF, DF = 32, 32
+N_RESNET = 4
 
 # Loss weights
-LAMBDA_AUX = 100
-LAMBDA_CYCLE = 10               # Cycle-consistency loss
-LAMBDA_ID = 0.1 * LAMBDA_CYCLE    # Identity loss
+LAMBDA_AUX = 1000
+LAMBDA_CYCLE = 10
+LAMBDA_ID = 10    
 
 #Optimize
 learning_rate = 0.0002
@@ -204,7 +205,7 @@ def build_generator(name=""):
     g = conv2d(g, GF*4, f_size=3, strides=2)
 
     # Resnet d'entrée
-    for _ in range(3):
+    for _ in range(N_RESNET):
         g = resnet(g)
 
     # Création de la CLASSE Activation Map (CAM) en Max et en Average
@@ -228,7 +229,7 @@ def build_generator(name=""):
     gamma, beta = adalin_param(g, GF*4)
 
     # Resnet de Sorties
-    for _ in range(3):
+    for _ in range(N_RESNET):
         g = resnet_adalin(g, gamma, beta)
 
     # Upscaling
@@ -274,7 +275,7 @@ def build_discriminator(name=""):
     aux_model = Model(entree, cam, name="aux_d_{}".format(name))
     aux_model.compile(loss='mse', optimizer=OPTIMIZER, metrics=['accuracy'])
 
-    return d_model,aux_model 
+    return d_model, aux_model 
 
 # Build and compile the discriminators
 d_A, aux_d_A = build_discriminator("A")
