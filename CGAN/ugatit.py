@@ -2,7 +2,7 @@ from __future__ import print_function, division
 import scipy
 
 from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, Add, Layer
+from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate, Add, Layer, Lambda
 from keras.layers import BatchNormalization, Activation, ZeroPadding2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers import Conv2D, Conv2DTranspose
@@ -24,7 +24,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 ### Constantes du programmes ###
 
 # Sur l'entrainement
-BATCH_SIZE = 1 #FIXE
+START_EPO = 0
+BATCH_SIZE = 1 #FIXE ICI, SINON ERREUR DE CALCULS AVEC LE MULTIPLY
 EPOCHS = 200
 SAMPLE_INTERVAL = 400
 
@@ -45,11 +46,7 @@ LAMBDA_ID = 10
 
 #Optimize
 learning_rate = 0.0002
-discr_factor = 0.3
 OPTIMIZER = Adam(learning_rate, 0.5)
-OPTIMIZER_D = Adam(learning_rate*discr_factor, 0.5)
-
-START_EPO = 0
 
 
 
@@ -218,6 +215,7 @@ def build_generator(name=""):
     g = Concatenate()([g_m, g_a])
 
     g = conv2d(g, GF*4, f_size=1, strides=1)
+    heatmap = Lambda(lambda x: K.sum(x, axis=-1))(g)
 
     # Création des constantes pour AdaLIN plus tard
     def adalin_param(x, filters):
@@ -241,8 +239,9 @@ def build_generator(name=""):
 
     g_model = Model(entree, g, name="gen_{}".format(name))
     aux_model = Model(entree, cam, name="aux_gen_{}".format(name))
+    heatmap_model = Model(entree, heatmap, name="heatmap_{}".format(name))
 
-    return g_model, aux_model
+    return g_model, aux_model, heatmap_model
 
 def build_discriminator(name=""):
     # Image input
@@ -282,8 +281,8 @@ d_A, aux_d_A = build_discriminator("A")
 d_B, aux_d_B = build_discriminator("B")
 
 # Build the generators
-g_AB, aux_g_AB = build_generator("AB")
-g_BA, aux_g_BA = build_generator("BA")
+g_AB, aux_g_AB, heatmap_AB = build_generator("AB")
+g_BA, aux_g_BA, heatmap_BA = build_generator("BA")
 
 
 #Load
@@ -370,7 +369,7 @@ def sample_images(epoch, batch_i, gif=False):
     else:
         os.makedirs('images/%s' % dataset_name, exist_ok=True)
 
-    r, c = 2, 3
+    r, c = 2, 4
 
     if gif:
         imgs_A = data_loader.load_img('datasets/{}/testA/gif.jpg'.format(dataset_name))
@@ -379,27 +378,48 @@ def sample_images(epoch, batch_i, gif=False):
         imgs_A = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
         imgs_B = data_loader.load_data(domain="B", batch_size=1, is_testing=True)
 
+    # Rescale btw 0 - 1
+    def rescale(img):
+        return 0.5*img + 0.5
+
+    # Rescale heat map
+    def rescale_hm(hm):
+        m,M = np.min(hm), np.max(hm)
+        return (hm-m)/(M-m)
+
     # Translate images to the other domain
-    fake_B = g_AB.predict(imgs_A)
-    fake_A = g_BA.predict(imgs_B)
+    fake_B = rescale(g_AB.predict(imgs_A))
+    fake_A = rescale(g_BA.predict(imgs_B))
     # Translate back to original domain
-    reconstr_A = g_BA.predict(fake_B)
-    reconstr_B = g_AB.predict(fake_A)
+    reconstr_A = rescale(g_BA.predict(fake_B))
+    reconstr_B = rescale(g_AB.predict(fake_A))
+    # Calculate heatmap
+    hm_A = rescale_hm(heatmap_AB.predict(imgs_A))
+    hm_B = rescale_hm(heatmap_BA.predict(imgs_B))
 
-    gen_imgs = np.concatenate([imgs_A, fake_B, reconstr_A, imgs_B, fake_A, reconstr_B])
-
-    # Rescale images 0 - 1
-    gen_imgs = 0.5 * gen_imgs + 0.5
-
-    titles = ['Original', 'Translated', 'Reconstructed']
+    titles = ['Original', 'Heatmap', 'Translated', 'Reconstructed']
     fig, axs = plt.subplots(r, c)
-    cnt = 0
-    for i in range(r):
-        for j in range(c):
-            axs[i,j].imshow(gen_imgs[cnt])
+
+    def show_row(r_i, img, hm, fake, reconstr):
+        def standart(i,j):
             axs[i, j].set_title(titles[j])
             axs[i,j].axis('off')
-            cnt += 1
+        # Image normale
+        axs[r_i,0].imshow(img[0,...])
+        standart(r_i, 0)
+        # Heatmap
+        axs[r_i,1].imshow(hm[0,...], cmap='hot', interpolation='nearest')
+        standart(r_i, 1)
+        # Fake
+        axs[r_i,2].imshow(fake[0,...])
+        standart(r_i, 2)
+        # Reconstructed
+        axs[r_i,3].imshow(reconstr[0,...])
+        standart(r_i, 3)
+
+    show_row(0, imgs_A, hm_A, fake_B, reconstr_A)
+    show_row(1, imgs_B, hm_B, fake_A, reconstr_B)
+
     if gif:
         fig.savefig("images/%s/gif/%d_%d.png" % (dataset_name, epoch, batch_i))
     else:
