@@ -27,7 +27,7 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 START_EPO = 0
 BATCH_SIZE = 1 #FIXE ICI, SINON ERREUR DE CALCULS AVEC LE MULTIPLY
 EPOCHS = 200
-SAMPLE_INTERVAL = 400
+SAMPLE_INTERVAL = 1000
 
 # Input shape
 IMG_ROWS = 128
@@ -36,7 +36,7 @@ CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Number of filters in the first layer of G and D
-GF, DF = 64,64
+GF, DF = 64, 64
 N_RESNET = 4
 
 # Loss weights
@@ -258,6 +258,7 @@ def build_discriminator(name=""):
     d = Conca2([d_m, d_a])
 
     d = conv2d(d, DF*4, f_size=1, strides=1)
+    heatmap = Lambda(lambda x: K.sum(x, axis=-1))(d)
 
     # Final
     d = Conv2D(1, kernel_size=4, strides=1, padding='same')(d)
@@ -268,15 +269,17 @@ def build_discriminator(name=""):
     aux_model = Model(entree, cam, name="aux_d_{}".format(name))
     aux_model.compile(loss='mse', optimizer=OPTIMIZER, metrics=['accuracy'])
 
-    return d_model, aux_model 
+    heatmap_model = Model(entree, heatmap, name="heatmap_{}".format(name))
+
+    return d_model, aux_model, heatmap_model
 
 # Build and compile the discriminators
-d_A, aux_d_A = build_discriminator("A")
-d_B, aux_d_B = build_discriminator("B")
+d_A, aux_d_A, heatmap_d_A = build_discriminator("A")
+d_B, aux_d_B, heatmap_d_B = build_discriminator("B")
 
 # Build the generators
-g_AB, aux_g_AB, heatmap_AB = build_generator("AB")
-g_BA, aux_g_BA, heatmap_BA = build_generator("BA")
+g_AB, aux_g_AB, heatmap_g_AB = build_generator("AB")
+g_BA, aux_g_BA, heatmap_g_BA = build_generator("BA")
 
 
 #Load
@@ -369,23 +372,14 @@ def sample_images(epoch, batch_i, gif=False):
     else:
         os.makedirs('images/%s' % dataset_name, exist_ok=True)
 
-    r, c = 2, 4
+    r, c = 2, 5
 
-    if gif:
-        imgs_A = data_loader.load_img('datasets/{}/testA/gif.jpg'.format(dataset_name))
-        imgs_B = data_loader.load_img('datasets/{}/testB/gif.jpg'.format(dataset_name))
-    else:
-        imgs_A = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
-        imgs_B = data_loader.load_data(domain="B", batch_size=1, is_testing=True)
+    imgs_A = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
+    imgs_B = data_loader.load_data(domain="B", batch_size=1, is_testing=True)
 
     # Rescale btw 0 - 1 img initially btw -1 and 1
     def rescale(img):
         return 0.5*img + 0.5
-
-    # Rescale heat map btw 0 and 1
-    def rescale_hm(hm):
-        m,M = np.min(hm), np.max(hm)
-        return (hm-m)/(M-m)
 
     # Translate images to the other domain
     fake_B = rescale(g_AB.predict(imgs_A))
@@ -394,36 +388,37 @@ def sample_images(epoch, batch_i, gif=False):
     reconstr_A = rescale(g_BA.predict(fake_B))
     reconstr_B = rescale(g_AB.predict(fake_A))
     # Calculate heatmap
-    hm_A = rescale_hm(heatmap_AB.predict(imgs_A))
-    hm_B = rescale_hm(heatmap_BA.predict(imgs_B))
+    hm_g_A = heatmap_g_AB.predict(imgs_A)
+    hm_g_B = heatmap_g_BA.predict(imgs_B)
+    hm_d_A = heatmap_d_A.predict(fake_A)
+    hm_d_B = heatmap_d_B.predict(fake_B)
 
-    titles = ['Original', 'Heatmap', 'Translated', 'Reconstructed']
-    fig, axs = plt.subplots(r, c)
+    titles = ['Original', 'Gen', 'Translated', 'Discr', 'Reconstructed']
+    fig, axs = plt.subplots(r, c, dpi=200)
 
-    def show_row(r_i, img, hm, fake, reconstr):
-        def standart(i,j):
-            axs[i, j].set_title(titles[j])
+    def show_row(r_i, img, hm_g, fake, hm_d, reconstr):
+        def show(i,j, im, is_heatmap=False):
+            if is_heatmap:
+                axs[i,j].imshow(im[0,...], cmap='cool', interpolation='nearest')
+            else:
+                axs[i,j].imshow(im[0,...])
+            axs[i,j].set_title(titles[j])
             axs[i,j].axis('off')
         # Image normale
-        axs[r_i,0].imshow(img[0,...])
-        standart(r_i, 0)
-        # Heatmap
-        axs[r_i,1].imshow(hm[0,...], cmap='viridis', interpolation='nearest')
-        standart(r_i, 1)
+        show(r_i, 0, img)
+        # Heatmap gen
+        show(r_i, 1, hm_g, is_heatmap=True)
         # Fake
-        axs[r_i,2].imshow(fake[0,...])
-        standart(r_i, 2)
+        show(r_i, 2, fake)
+        # Heatmap disc
+        show(r_i, 3, hm_d, is_heatmap=True)
         # Reconstructed
-        axs[r_i,3].imshow(reconstr[0,...])
-        standart(r_i, 3)
+        show(r_i, 4, reconstr)
 
-    show_row(0, imgs_A, hm_A, fake_B, reconstr_A)
-    show_row(1, imgs_B, hm_B, fake_A, reconstr_B)
+    show_row(0, imgs_A, hm_g_A, fake_B, hm_d_B, reconstr_A)
+    show_row(1, imgs_B, hm_g_B, fake_A, hm_d_A, reconstr_B)
 
-    if gif:
-        fig.savefig("images/%s/gif/%d_%d.png" % (dataset_name, epoch, batch_i))
-    else:
-        fig.savefig("images/%s/%d_%d.png" % (dataset_name, epoch, batch_i))
+    fig.savefig("images/%s/%d_%d.png" % (dataset_name, epoch, batch_i), dpi=200)
     plt.close()
 
 def save():
@@ -512,5 +507,5 @@ for epoch in range(START_EPO,EPOCHS):
         # If at save interval => save generated image samples
         if batch_i % SAMPLE_INTERVAL == 0:
             sample_images(epoch, batch_i)
-            sample_images(epoch, batch_i, gif=True)
+            #sample_images(epoch, batch_i, gif=True)
             save()
