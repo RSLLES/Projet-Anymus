@@ -401,21 +401,18 @@ def sample_images(epoch, batch_i, gif=False):
     fig, axs = plt.subplots(r, c, dpi=200)
 
     def show_row(r_i, img, hm_g, fake, hm_d, reconstr):
-        def show(i,j, im, is_heatmap=False):
-            if is_heatmap:
-                axs[i,j].imshow(im[0,...])
-            else:
-                axs[i,j].imshow(im[0,...])
+        def show(i,j, im):
+            axs[i,j].imshow(0.5*im[0,...]+0.5)
             axs[i,j].set_title(titles[j])
             axs[i,j].axis('off')
         # Image normale
         show(r_i, 0, img)
         # Heatmap gen
-        show(r_i, 1, hm_g, is_heatmap=True)
+        show(r_i, 1, hm_g)
         # Fake
         show(r_i, 2, fake)
         # Heatmap disc
-        show(r_i, 3, hm_d, is_heatmap=True)
+        show(r_i, 3, hm_d)
         # Reconstructed
         show(r_i, 4, reconstr)
 
