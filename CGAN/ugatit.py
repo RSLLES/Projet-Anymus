@@ -400,10 +400,7 @@ def sample_images(epoch, batch_i, gif=False):
 
     def show_row(r_i, img, hm_g, fake, hm_d, reconstr):
         def show(i,j, im, is_heatmap=False):
-            if is_heatmap:
-                axs[i,j].imshow(im[0,...], cmap='cool', interpolation='nearest')
-            else:
-                axs[i,j].imshow(im[0,...])
+            axs[i,j].imshow(im[0,...])
             axs[i,j].set_title(titles[j])
             axs[i,j].axis('off')
         # Image normale
