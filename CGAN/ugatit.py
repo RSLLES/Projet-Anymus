@@ -284,11 +284,17 @@ def load():
     """Sauvegarde les poids deja calculés, pour pouvoir reprendre les calculs plus tard si jamais"""
     os.makedirs(wf, exist_ok=True)
     if (os.path.isfile(wf + "d_A.h5") and os.path.isfile(wf + "g_AB.h5") 
-    and os.path.isfile(wf + "d_B.h5") and os.path.isfile(wf + "g_BA.h5")):
+    and os.path.isfile(wf + "aux_d_A.h5") and os.path.isfile(wf + "aux_g_AB.h5") 
+    and os.path.isfile(wf + "d_B.h5") and os.path.isfile(wf + "g_BA.h5")
+    and os.path.isfile(wf + "aux_d_B.h5") and os.path.isfile(wf + "aux_g_BA.h5")):
         d_A.load_weights(wf + "d_A.h5")
         d_B.load_weights(wf + "d_B.h5")
         g_AB.load_weights(wf + "g_AB.h5")
         g_BA.load_weights(wf + "g_BA.h5")
+        aux_d_A.load_weights(wf + "aux_d_A.h5")
+        aux_d_B.load_weights(wf + "aux_d_B.h5")
+        aux_g_AB.load_weights(wf + "aux_g_AB.h5")
+        aux_g_BA.load_weights(wf + "aux_g_BA.h5")
         print("Weights loaded")
     else:
         print("Missing weights files detected. Starting from scratch")
@@ -427,6 +433,10 @@ def save():
     d_B.save_weights(wf + "d_B.h5")
     g_AB.save_weights(wf + "g_AB.h5")
     g_BA.save_weights(wf + "g_BA.h5")
+    aux_d_A.save_weights(wf + "aux_d_A.h5")
+    aux_d_B.save_weights(wf + "aux_d_B.h5")
+    aux_g_AB.save_weights(wf + "aux_g_AB.h5")
+    aux_g_BA.save_weights(wf + "aux_g_BA.h5")
 
 start_time = datetime.datetime.now()
 
