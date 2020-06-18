@@ -383,6 +383,11 @@ def sample_images(epoch, batch_i, gif=False):
     def rescale(img):
         return 0.5*img + 0.5
 
+    # Rescale heatmap with max = 1 and min = -1
+    def rescale_hm(img):
+        M,m = np.max(img), np.min(img)
+        return (img-m)/(M-m)
+
     # Translate images to the other domain
     fake_B = rescale(g_AB.predict(imgs_A))
     fake_A = rescale(g_BA.predict(imgs_B))
@@ -390,10 +395,10 @@ def sample_images(epoch, batch_i, gif=False):
     reconstr_A = rescale(g_BA.predict(fake_B))
     reconstr_B = rescale(g_AB.predict(fake_A))
     # Calculate heatmap
-    hm_g_A = heatmap_g_AB.predict(imgs_A)
-    hm_g_B = heatmap_g_BA.predict(imgs_B)
-    hm_d_A = heatmap_d_A.predict(fake_A)
-    hm_d_B = heatmap_d_B.predict(fake_B)
+    hm_g_A = rescale_hm(heatmap_g_AB.predict(imgs_A))
+    hm_g_B = rescale_hm(heatmap_g_BA.predict(imgs_B))
+    hm_d_A = rescale_hm(heatmap_d_A.predict(fake_A))
+    hm_d_B = rescale_hm(heatmap_d_B.predict(fake_B))
 
     titles = ['Original', 'Gen', 'Translated', 'Discr', 'Reconstructed']
     fig, axs = plt.subplots(r, c, dpi=200)
@@ -401,7 +406,7 @@ def sample_images(epoch, batch_i, gif=False):
     def show_row(r_i, img, hm_g, fake, hm_d, reconstr):
         def show(i,j, im, is_heatmap=False):
             if is_heatmap:
-                axs[i,j].imshow(im[0,...], vmin=-1., vmax=1., cmap='RdBu_r')
+                axs[i,j].imshow(im[0,...], vmin=0., vmax=1., cmap='RdBu_r')
             else:
                 axs[i,j].imshow(im[0,...])
             axs[i,j].set_title(titles[j])
