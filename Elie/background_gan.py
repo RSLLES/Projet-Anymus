@@ -1,18 +1,92 @@
+#!/usr/bin/env python
+# coding: utf-8
+
 from __future__ import print_function, division
 import scipy
+import tensorflow
+import scipy
+from glob import glob
+import numpy as np
+import matplotlib.pyplot as plt
+from keras_preprocessing.image import load_img
+from keras_preprocessing.image import img_to_array
+import scipy
 
-from keras.datasets import mnist
-from keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
-from keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
-from keras.layers import BatchNormalization, Activation, ZeroPadding2D
-from keras.layers.advanced_activations import LeakyReLU
-from keras.layers.convolutional import UpSampling2D, Conv2D
-from keras.models import Sequential, Model
-from keras.optimizers import Adam
+class DataLoader():
+    def __init__(self, dataset_name, img_res=(128, 128)):
+        self.dataset_name = dataset_name
+        self.img_res = img_res
+
+    def load_data(self, domain, batch_size=1, is_testing=False):
+        data_type = "train%s" % domain if not is_testing else "test%s" % domain
+        path = glob('./datasets/%s/%s/*' % (self.dataset_name, data_type))
+
+        batch_images = np.random.choice(path, size=batch_size)
+
+        imgs = []
+        for img_path in batch_images:
+            img = self.imread(img_path)
+            if not is_testing and np.random.random() > 0.5:
+                img = np.fliplr(img)
+            imgs.append(img)
+
+        imgs = np.array(imgs)/127.5 - 1.
+
+        return imgs
+
+    def load_batch(self, batch_size=1, is_testing=False):
+        data_type = "train" if not is_testing else "val"
+        path_A = glob('./datasets/%s/%sA/*' % (self.dataset_name, data_type))
+        path_B = glob('./datasets/%s/%sB/*' % (self.dataset_name, data_type))
+
+        self.n_batches = int(min(len(path_A), len(path_B)) / batch_size)
+        total_samples = self.n_batches * batch_size
+
+        # Sample n_batches * batch_size from each path list so that model sees all
+        # samples from both domains
+        path_A = np.random.choice(path_A, total_samples, replace=False)
+        path_B = np.random.choice(path_B, total_samples, replace=False)
+
+        for i in range(self.n_batches-1):
+            batch_A = path_A[i*batch_size:(i+1)*batch_size]
+            batch_B = path_B[i*batch_size:(i+1)*batch_size]
+            imgs_A, imgs_B = [], []
+            for img_A, img_B in zip(batch_A, batch_B):
+                img_A = self.imread(img_A)
+                img_B = self.imread(img_B)
+
+                if not is_testing and np.random.random() > 0.5:
+                        img_A = np.fliplr(img_A)
+                        img_B = np.fliplr(img_B)
+
+                imgs_A.append(img_A)
+                imgs_B.append(img_B)
+
+            imgs_A = np.array(imgs_A)/127.5 - 1.
+            imgs_B = np.array(imgs_B)/127.5 - 1.
+
+            yield imgs_A, imgs_B
+
+    def load_img(self, path):
+        img = self.imread(path)
+        img = img/127.5 - 1.
+        return img[np.newaxis, :, :, :]
+
+    def imread(self, path):
+        pixels = load_img(path, target_size=self.img_res)
+        return img_to_array(pixels)
+
+#from tensorflow.keras_contrib.layers.normalization.instancenormalization import InstanceNormalization
+
+from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
+from tensorflow.keras.layers import BatchNormalization, Activation, ZeroPadding2D
+from tensorflow.keras.layers import LeakyReLU
+from tensorflow.keras.layers import UpSampling2D, Conv2D
+from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.optimizers import Adam
 import datetime
 import matplotlib.pyplot as plt
 import sys
-from data_loader import DataLoader
 import numpy as np
 import os
 
@@ -25,10 +99,9 @@ class Pix2Pix():
         self.img_shape = (self.img_rows, self.img_cols, self.channels)
 
         # Configure data loader
-        self.dataset_name = 'facades'
+        self.dataset_name = 'landscape2myazaki'
         self.data_loader = DataLoader(dataset_name=self.dataset_name,
                                       img_res=(self.img_rows, self.img_cols))
-
 
         # Calculate output shape of D (PatchGAN)
         patch = int(self.img_rows / 2**4)
@@ -144,7 +217,6 @@ class Pix2Pix():
         return Model([img_A, img_B], validity)
 
     def train(self, epochs, batch_size=1, sample_interval=50):
-
         start_time = datetime.datetime.now()
 
         # Adversarial loss ground truths
@@ -152,6 +224,7 @@ class Pix2Pix():
         fake = np.zeros((batch_size,) + self.disc_patch)
 
         for epoch in range(epochs):
+            print("h")
             for batch_i, (imgs_A, imgs_B) in enumerate(self.data_loader.load_batch(batch_size)):
 
                 # ---------------------
@@ -186,10 +259,13 @@ class Pix2Pix():
                     self.sample_images(epoch, batch_i)
 
     def sample_images(self, epoch, batch_i):
-        os.makedirs('images/%s' % self.dataset_name, exist_ok=True)
+        os.makedirs('C:/Users/eliel/OneDrive/Bureau/GAN/%s' % self.dataset_name, exist_ok=True)
         r, c = 3, 3
 
-        imgs_A, imgs_B = self.data_loader.load_data(batch_size=3, is_testing=True)
+        #imgs_A, imgs_B = self.data_loader.load_data(batch_size=3, is_testing=True)
+        
+        imgs_A = self.data_loader.load_data("A", 3, True)
+        imgs_B = self.data_loader.load_data("B", 3, True)
         fake_A = self.generator.predict(imgs_B)
 
         gen_imgs = np.concatenate([imgs_B, fake_A, imgs_A])
@@ -206,10 +282,8 @@ class Pix2Pix():
                 axs[i, j].set_title(titles[i])
                 axs[i,j].axis('off')
                 cnt += 1
-        fig.savefig("images/%s/%d_%d.png" % (self.dataset_name, epoch, batch_i))
+        fig.savefig("C:/Users/eliel/OneDrive/Bureau/GAN/%s/%d_%d.png" % (self.dataset_name, epoch, batch_i))
         plt.close()
 
+        
 
-if __name__ == '__main__':
-    gan = Pix2Pix()
-    gan.train(epochs=200, batch_size=1, sample_interval=200)
