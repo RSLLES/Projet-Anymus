@@ -128,14 +128,8 @@ class AuxClass(Layer):
     def build(self, input_shape):
         if (len(input_shape) != 2):
             raise ValueError("Input should be pooled layer then normal layer in a list")
-        self.w = self.add_weight(
-            shape=(input_shape[0][-1], 1),
-            initializer="random_normal",
-            trainable=True,
-        )
-        self.b = self.add_weight(
-            shape=(1,), initializer="random_normal", trainable=True
-        )
+        self.w = self.add_weight(shape=(input_shape[0][-1], 1),initializer="random_normal",trainable=True,name="w")
+        self.b = self.add_weight(shape=(1,), initializer="random_normal", trainable=True, name="b")
         super(AuxClass, self).build(input_shape)
 
     def call(self, inputs):
@@ -509,4 +503,4 @@ for epoch in range(START_EPO,EPOCHS):
         if batch_i % SAMPLE_INTERVAL == 0:
             sample_images(epoch, batch_i)
             sample_images(epoch, batch_i, gif=True)
-            #save()
+            save()
