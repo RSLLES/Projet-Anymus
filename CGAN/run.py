@@ -2,7 +2,7 @@ import glob
 import os
 import numpy as np
 from tqdm import tqdm
-import scipy.misc
+from PIL import Image
 
 from keras_preprocessing.image import load_img
 from keras_preprocessing.image import img_to_array
@@ -44,7 +44,8 @@ def main():
         img_res = 127.5*(img_res+1)
 
         #Enregistrement
-        scipy.misc.imsave(os.path.join(results_folder, name), img_res)
+        pil_img = Image.fromarray(img_res)
+        pil_img.save(os.path.join(results_folder, name))
 
 if __name__ == "__main__":
     main()
