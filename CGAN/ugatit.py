@@ -379,21 +379,18 @@ def sample_images(epoch, batch_i, gif=False):
     imgs_A = data_loader.load_data(domain="A", batch_size=1, is_testing=True)
     imgs_B = data_loader.load_data(domain="B", batch_size=1, is_testing=True)
 
-    # Rescale btw 0 - 1 img initially btw -1 and 1
-    def rescale(img):
-        return 0.5*img + 0.5
 
-    # Rescale heatmap with max = 1 and min = -1
+    # Rescale heatmap btw -1 and 1
     def rescale_hm(img):
         M,m = np.max(img), np.min(img)
-        return (img-m)/(M-m)
+        return 2*(img-m)/(M-m)-1
 
     # Translate images to the other domain
-    fake_B = rescale(g_AB.predict(imgs_A))
-    fake_A = rescale(g_BA.predict(imgs_B))
+    fake_B = g_AB.predict(imgs_A)
+    fake_A = g_BA.predict(imgs_B)
     # Translate back to original domain
-    reconstr_A = rescale(g_BA.predict(fake_B))
-    reconstr_B = rescale(g_AB.predict(fake_A))
+    reconstr_A = g_BA.predict(fake_B)
+    reconstr_B = g_AB.predict(fake_A)
     # Calculate heatmap
     hm_g_A = rescale_hm(heatmap_g_AB.predict(imgs_A))
     hm_g_B = rescale_hm(heatmap_g_BA.predict(imgs_B))
@@ -406,7 +403,7 @@ def sample_images(epoch, batch_i, gif=False):
     def show_row(r_i, img, hm_g, fake, hm_d, reconstr):
         def show(i,j, im, is_heatmap=False):
             if is_heatmap:
-                axs[i,j].imshow(im[0,...], vmin=0., vmax=1., cmap='RdBu_r')
+                axs[i,j].imshow(im[0,...])
             else:
                 axs[i,j].imshow(im[0,...])
             axs[i,j].set_title(titles[j])
