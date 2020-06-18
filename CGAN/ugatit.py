@@ -38,7 +38,7 @@ CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Number of filters in the first layer of G and D
-GF, DF = 32, 32
+GF, DF = 64, 64
 N_RESNET = 4
 
 # Loss weights
