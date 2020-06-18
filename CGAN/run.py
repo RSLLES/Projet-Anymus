@@ -44,7 +44,7 @@ def main():
         img_res = 127.5*(img_res+1)
 
         #Enregistrement
-        pil_img = Image.fromarray(img_res)
+        pil_img = Image.fromarray(img_res.astype(np.uint8))
         pil_img.save(os.path.join(results_folder, name))
 
 if __name__ == "__main__":
