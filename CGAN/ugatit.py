@@ -25,6 +25,8 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 # Sur l'entrainement
 START_EPO = 0
+if len(sys.argv) > 1:
+    START_EPO = int(sys.argv[1])
 BATCH_SIZE = 1 #FIXE ICI, SINON ERREUR DE CALCULS AVEC LE MULTIPLY
 EPOCHS = 200
 SAMPLE_INTERVAL = 1000
