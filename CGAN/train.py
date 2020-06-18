@@ -28,9 +28,6 @@ IMG_COLS = 128
 CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
-
-
-
 # Configure data loader
 dataset_name = 'ugatit'
 wf = "Weights/{}/".format(dataset_name)
