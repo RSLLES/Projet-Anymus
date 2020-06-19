@@ -1,6 +1,7 @@
 from tensorflow.keras.optimizers import Adam
-from keras.layers import Input, Concatenate, Lambda, Flatten, Dense
+from keras.layers import Input, Concatenate, Lambda, Flatten, Dense, Activation
 from keras.layers import GlobalMaxPooling2D, GlobalAveragePooling2D
+from keras.activations import sigmoid
 import keras.backend as K
 from keras.models import Model
 
@@ -36,6 +37,7 @@ def build_generator(IMG_SHAPE, name=""):
     # Downsampling
     g = conv2d(entree, GF, f_size=7, strides=1)
     g = conv2d(g, GF*2, f_size=3, strides=2)
+    g = conv2d(g, GF*2, f_size=3, strides=2)
     g = conv2d(g, GF*4, f_size=3, strides=2)
 
     # Resnet d'entrée
@@ -49,6 +51,7 @@ def build_generator(IMG_SHAPE, name=""):
     cam_a, g_a = AuxClass()([g_ap, g])
 
     cam = Concatenate()([cam_m, cam_a])
+    cam = Activation(sigmoid)(cam)
     g = Concatenate()([g_m, g_a])
 
     g = conv2d(g, GF*4, f_size=1, strides=1)
@@ -69,6 +72,7 @@ def build_generator(IMG_SHAPE, name=""):
 
     # Upscaling
     g = deconv2d_adalin(g, GF*2, f_size=4)
+    g = deconv2d_adalin(g, GF*2, f_size=4)
     g = deconv2d_adalin(g, GF, f_size=4)
 
     # Fin du réseau
@@ -87,20 +91,20 @@ def build_discriminator(IMG_SHAPE, name=""):
     # Downsampling
     d = conv2d(entree, DF, f_size=7, strides=1)
     d = conv2d(d, DF*2, f_size=3, strides=2)
+    d = conv2d(d, DF*2, f_size=3, strides=2)
     d = conv2d(d, DF*4, f_size=3, strides=2)
 
     # Création de la CLASSE Activation Map (CAM) en Max et en Average
     d_mp, d_ap = GlobalMaxPooling2D()(d), GlobalAveragePooling2D()(d)
 
-    A1, A2 = AuxClass(), AuxClass()
-    cam_m, d_m = A1([d_mp, d])
-    cam_a, d_a = A2([d_ap, d])
+    cam_m, d_m = AuxClass()([d_mp, d])
+    cam_a, d_a = AuxClass()([d_ap, d])
 
-    Conca1, Conca2 = Concatenate(), Concatenate()
-    cam = Conca1([cam_m, cam_a])
-    d = Conca2([d_m, d_a])
+    cam = Concatenate()([cam_m, cam_a])
+    d = Concatenate()([d_m, d_a])
 
     d = conv2d(d, DF*4, f_size=1, strides=1)
+    cam = Activation(sigmoid)(cam)
     heatmap = Lambda(lambda x: K.sum(x, axis=-1))(d)
 
     # Final
@@ -163,8 +167,8 @@ def build_combined(IMG_SHAPE, d_A, d_B, g_AB, g_BA, aux_d_A, aux_d_B, aux_g_AB, 
     model.compile(  loss=[  'mse', 'mse', 
                             'mae', 'mae',
                             'mae', 'mae',
-                            'mse', 'mse',
-                            'mse', 'mse'],
+                            'binary_crossentropy', 'binary_crossentropy',
+                            'binary_crossentropy', 'binary_crossentropy'],
                     loss_weights=[  1, 1,
                                     LAMBDA_CYCLE, LAMBDA_CYCLE, 
                                     LAMBDA_ID, LAMBDA_ID,
