@@ -92,13 +92,11 @@ def build_discriminator(IMG_SHAPE, name=""):
     # Création de la CLASSE Activation Map (CAM) en Max et en Average
     d_mp, d_ap = GlobalMaxPooling2D()(d), GlobalAveragePooling2D()(d)
 
-    A1, A2 = AuxClass(), AuxClass()
-    cam_m, d_m = A1([d_mp, d])
-    cam_a, d_a = A2([d_ap, d])
+    cam_m, d_m = AuxClass()([d_mp, d])
+    cam_a, d_a = AuxClass()([d_ap, d])
 
-    Conca1, Conca2 = Concatenate(), Concatenate()
-    cam = Conca1([cam_m, cam_a])
-    d = Conca2([d_m, d_a])
+    cam = Concatenate()([cam_m, cam_a])
+    d = Concatenate()([d_m, d_a])
 
     d = conv2d(d, DF*4, f_size=1, strides=1)
     heatmap = Lambda(lambda x: K.sum(x, axis=-1))(d)
