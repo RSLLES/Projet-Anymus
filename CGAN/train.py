@@ -10,7 +10,6 @@ from reseaux import *
 from data_loader import DataLoader
 from utils import *
 
-
 #
 # Constantes sur l'entrainement
 # 
@@ -23,8 +22,8 @@ BATCH_SIZE = 1 #FIXE ICI, SINON ERREUR DE CALCULS AVEC LE MULTIPLY
 EPOCHS = 200
 SAMPLE_INTERVAL = 1000
 
-IMG_ROWS = 128
-IMG_COLS = 128
+IMG_ROWS = 256
+IMG_COLS = 256
 CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
