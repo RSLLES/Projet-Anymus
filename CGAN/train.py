@@ -2,6 +2,7 @@ import sys
 import os
 from PIL import ImageFile
 import datetime
+import numpy as np
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
@@ -22,13 +23,13 @@ BATCH_SIZE = 1 #FIXE ICI, SINON ERREUR DE CALCULS AVEC LE MULTIPLY
 EPOCHS = 200
 SAMPLE_INTERVAL = 1000
 
-IMG_ROWS = 128
-IMG_COLS = 128
+IMG_ROWS = 256
+IMG_COLS = 256
 CHANNELS = 3
 IMG_SHAPE = (IMG_ROWS, IMG_COLS, CHANNELS)
 
 # Configure data loader
-dataset_name = 'ugatit'
+dataset_name = 'ugatit256'
 wf = "Weights/{}/".format(dataset_name)
 data_loader = DataLoader(dataset_name=dataset_name, img_res=(IMG_ROWS, IMG_COLS))
 
@@ -46,10 +47,7 @@ Load_Weights(wf, d_A, d_B, g_AB, g_BA, aux_d_A, aux_d_B, aux_g_AB, aux_g_BA)
 # Build the combined model to train generators
 combined = build_combined(IMG_SHAPE, d_A, d_B, g_AB, g_BA, aux_d_A, aux_d_B, aux_g_AB, aux_g_BA)
 
-
-#
 # Lancement de l'entrainement 
-#
 
 start_time = datetime.datetime.now()
 
