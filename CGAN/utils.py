@@ -2,13 +2,13 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-def Load_G_AB(wf, g_AB):
-    if (os.path.isfile(wf + "g_AB.h5")):
-        g_AB.load_weights(wf + "g_AB.h5")
+def Load_G_AB(path, g_AB):
+    if (os.path.isfile(path)):
+        g_AB.load_weights(path)
         print("Weights loaded")
         return True
     else:
-        print("Impossible de charger les poids du réseau. Il doit se trouver dans '{}'".format(wf + "g_AB.h5"))
+        print("Impossible de charger les poids du réseau. Il doit se trouver dans '{}'".format(path))
         return False
 
 def Load_Weights(wf, d_A, d_B, g_AB, g_BA, aux_d_A, aux_d_B, aux_g_AB, aux_g_BA):
