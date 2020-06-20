@@ -12,7 +12,7 @@ from custom_layers import *
 #
 
 # Number of filters in the first layer of G and D
-GF, DF = 100, 50
+GF, DF = 64,64
 N_RESNET = 4
 
 # Loss weights
