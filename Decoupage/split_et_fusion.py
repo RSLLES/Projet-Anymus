@@ -1,5 +1,7 @@
 from PIL import Image
 import numpy as np
+from itertools import product
+from tqdm import tqdm
 
 d_min = 10 # Doit etre < c, sinon deja ca n'a aucun sens et après y'a une belle boucle infinie
 c = 128
@@ -22,12 +24,12 @@ def decoupage():
     d, nL, nh = search_for_d(L,h,c)
 
     All_images = []
-    for a in range(nL):
-        for b in range(nh):
-            jm, jM = b*(c-d), (b+1)*(c-d)+d
-            im, iM = a*(c-d), (a+1)*(c-d)+d
-            crop_img = Image.fromarray(pix[jm:jM, im:iM, ...].astype(np.uint8))
-            crop_img.save("dissambled/{}.{}.jpg".format(b,a))
+    for a,b in tqdm(product(range(nL), range(nh))):
+        jm, jM = b*(c-d), (b+1)*(c-d)+d
+        im, iM = a*(c-d), (a+1)*(c-d)+d
+        crop_img = Image.fromarray(pix[jm:jM, im:iM, ...].astype(np.uint8))
+        crop_img.save("dissambled/{}.{}.jpg".format(b,a))
+decoupage()
 
 def fusion(L,h):
     d, nL, nh = search_for_d(L,h,c)

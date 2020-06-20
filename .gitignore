@@ -7,3 +7,4 @@ Tour_remote.rdp
 CGAN/results
 CGAN/inputs
 .DS_Store
+CGAN/__pycache__
