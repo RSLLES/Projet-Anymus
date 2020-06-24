@@ -17,6 +17,7 @@ N_RESNET = 4
 
 # Loss weights
 LAMBDA_AUX = 1000
+LAMBDA_AUX_DISC = 10
 LAMBDA_CYCLE = 10
 LAMBDA_ID = 10    
 
@@ -110,12 +111,10 @@ def build_discriminator(IMG_SHAPE, name=""):
     # Final
     d = Conv2D(1, kernel_size=4, strides=1, padding='same')(d)
 
-    d_model = Model(entree, d, name="disc_{}".format(name))
-    d_model.compile(loss='mse', optimizer=OPTIMIZER, metrics=['accuracy'])
+    d_model = Model(entree, [d,cam], name="disc_{}".format(name))
+    d_model.compile(loss=['mse', 'binary_crossentropy'], loss_weights=[1, LAMBDA_AUX_DISC], optimizer=OPTIMIZER, metrics=['accuracy'])
 
     aux_model = Model(entree, cam, name="aux_d_{}".format(name))
-    aux_model.compile(loss='mse', optimizer=OPTIMIZER, metrics=['accuracy'])
-
     heatmap_model = Model(entree, heatmap, name="heatmap_{}".format(name))
 
     return d_model, aux_model, heatmap_model
@@ -125,7 +124,7 @@ def build_discriminator(IMG_SHAPE, name=""):
 # 
 
 
-def build_combined(IMG_SHAPE, d_A, d_B, g_AB, g_BA, aux_d_A, aux_d_B, aux_g_AB, aux_g_BA):
+def build_combined(IMG_SHAPE, d_A, d_B, g_AB, g_BA, aux_g_AB, aux_g_BA):
     # Input images from both domains
     img_A = Input(shape=IMG_SHAPE)
     img_B = Input(shape=IMG_SHAPE)
@@ -151,12 +150,10 @@ def build_combined(IMG_SHAPE, d_A, d_B, g_AB, g_BA, aux_d_A, aux_d_B, aux_g_AB, 
     # For the combined model we will only train the generators
     d_A.trainable = False
     d_B.trainable = False
-    aux_d_A.trainable = False
-    aux_d_B.trainable = False
 
     # Discriminators determines validity of translated images
-    valid_A = d_A(fake_A)
-    valid_B = d_B(fake_B)
+    valid_A, _ = d_A(fake_A)
+    valid_B, _ = d_B(fake_B)
 
     # Combined model trains generators to fool discriminators
     model = Model(inputs=[img_A, img_B], outputs=[  valid_A, valid_B, 
