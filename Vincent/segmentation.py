@@ -1,4 +1,4 @@
-!git clone https://github.com/timesler/facenet-pytorch facenet_pytorch
+#!git clone https://github.com/timesler/facenet-pytorch facenet_pytorch
 
 from facenet_pytorch import MTCNN, InceptionResnetV1, extract_face  # modèles préentrainés
 import torch
@@ -37,17 +37,24 @@ def seg_faces(path):
 
     # On agrandit les boîtes pour englober toute la tête
     img = np.array(img)
+    coord = []
     boxes_up = boxes.copy()
-    p = 0.3    # pourcentage d'augmentation des longueurs
+    p = 0.3    # pourcentage d'augmentation 
     for box in boxes_up:
         l = box[2] - box[0]
         h = box[3] - box[1]
+        coord_x = box[0] + l/2
+        coord_y = box[1] + h/2
+        coord.append([coord_x, coord_y])
         box[0] -= l*p 
         box[2] += l*p
         box[1] -= h*p
         box[3] += h*p
 
+    coord = np.array([coord])
+    coord = coord.astype(int)
     boxes_up = boxes_up.astype(int)
+
 
     # On crée un array des visages découpés
     faces = []
@@ -57,4 +64,4 @@ def seg_faces(path):
 
     faces = np.array(faces)
     
-    return faces
+    return faces, coord
