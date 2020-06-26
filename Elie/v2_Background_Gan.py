@@ -177,6 +177,16 @@ class Pix2Pix():
             u = ReLU()(u)
             return u
 
+        def deconv2d(layer_input, skip_input, filters, f_size=4, dropout_rate=0):
+            """Layers used during upsampling"""
+            u = UpSampling2D(size=2)(layer_input)
+            u = Conv2D(filters, kernel_size=f_size, strides=1, padding='same', activation='relu')(u)
+            if dropout_rate:
+                u = Dropout(dropout_rate)(u)
+            u = BatchNormalization(momentum=0.8)(u)
+            #u = Concatenate()([u, skip_input])
+            return u
+
         def residual_block(y, nb_channels):
             shortcut = y
 
@@ -211,14 +221,21 @@ class Pix2Pix():
         r4 = residual_block(r3, self.gf * 4)
 
         #Upsampling
-        u1 = upconv2d(r4, self.gf*2, 3)
-        u2 = upconv2d(u1, self.gf, 3)
+        #u1 = upconv2d(r4, self.gf*2, 3)
+        #u2 = upconv2d(u1, self.gf, 3)
+        #d7 = conv2d(u2, 3, 7, 1)
+        #output_img = tensorflow.keras.activations.tanh(d7)
 
-        d7 = conv2d(u2, 3, 7, 1)
+        u1 = deconv2d(r4, r3, self.gf*4)
+        u2 = deconv2d(u1, d5, self.gf*4)
+        #u3 = deconv2d(u2, d4, self.gf*4)
+        #u4 = deconv2d(u3, d3, self.gf*2)
+        #u5 = deconv2d(u4, d2, self.gf*2)
+        #u6 = deconv2d(u5, d1, self.gf)
+        #u7 = UpSampling2D(size=2)(u6)
+        output_img = Conv2D(self.channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u2)
 
-        output = tensorflow.keras.activations.tanh(d7)
-
-        return Model(d0, output)
+        return Model(d0, output_img)
 
     def build_discriminator(self):
 
@@ -242,7 +259,7 @@ class Pix2Pix():
         d4 = d_layer(d3, self.df*4, f_size = 3, l_stride = 2, is_norm = False, is_relu = True)
         d5 = d_layer(d4, self.df*8, f_size = 3, l_stride = 1, is_norm = True, is_relu = True)
         d6 = d_layer(d5, self.df*8, f_size = 3, l_stride = 1, is_norm = True, is_relu = True)
-        d7 = d_layer(d6, 1, f_size = 3, l_stride = 1, is_norm = False, is_relu = False)
+        d7 = d_layer(d6, 1, f_size = 3, l_stride = 4, is_norm = False, is_relu = False)
 
         validity = d7
 
@@ -320,4 +337,4 @@ class Pix2Pix():
 
         
 skillboyz = Pix2Pix()
-skillboyz.train(30,2)
+skillboyz.train(30)
