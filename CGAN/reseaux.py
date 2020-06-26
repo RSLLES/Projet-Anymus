@@ -18,7 +18,7 @@ N_RESNET = 4
 # Loss weights
 LAMBDA_AUX = 1000
 LAMBDA_AUX_DISC = 10
-LAMBDA_CYCLE = 10
+LAMBDA_CYCLE = 3
 LAMBDA_ID = 10    
 
 #Optimize
