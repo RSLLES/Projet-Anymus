@@ -1,6 +1,6 @@
 IMG_SHAPE = (256,256,3)
-OVERLAP_FACTOR = 4
-
+OVERLAP_FACTOR = 2
+FILL_MODE = "reflect"
 def load_model(path):
     g,_,_ = build_generator(IMG_SHAPE, name="")
     Load_G_AB(path, g)
@@ -83,7 +83,7 @@ def run_img_bigger(path, path_to_gen, preffix, results_folder):
     g = load_model(path_to_gen)
 
     # Transformation en mosaic
-    mosaic = MightyMosaic.from_array(img, (IMG_SHAPE[0], IMG_SHAPE[1]), overlap_factor=OVERLAP_FACTOR)
+    mosaic = MightyMosaic.from_array(img, (IMG_SHAPE[0], IMG_SHAPE[1]), overlap_factor=OVERLAP_FACTOR, fill_mode=FILL_MODE)
     print(f'The mosaic shape is {mosaic.shape} : {mosaic.shape[0]*mosaic.shape[1]} mosaics to transform')
 
     # Conversion
@@ -131,7 +131,7 @@ def run_all_folder_bigger(input_folder, path_to_gen, preffix, results_folder):
             print("L'image est redimensionnée en {}x{}".format(w,h))
 
         # Transformation en mosaic
-        mosaic = MightyMosaic.from_array(img, (IMG_SHAPE[0], IMG_SHAPE[1]), overlap_factor=OVERLAP_FACTOR)
+        mosaic = MightyMosaic.from_array(img, (IMG_SHAPE[0], IMG_SHAPE[1]), overlap_factor=OVERLAP_FACTOR, fill_mode=FILL_MODE)
         print(f'The mosaic shape is {mosaic.shape} : {mosaic.shape[0]*mosaic.shape[1]} mosaics to transform')
 
         # Conversion
