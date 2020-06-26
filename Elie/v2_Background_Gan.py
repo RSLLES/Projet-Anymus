@@ -219,6 +219,10 @@ class Pix2Pix():
         r2 = residual_block(r1, self.gf * 4)
         r3 = residual_block(r2, self.gf * 4)
         r4 = residual_block(r3, self.gf * 4)
+        r5 = residual_block(r4, self.gf * 4)
+        r6 = residual_block(r5, self.gf * 4)
+        r7 = residual_block(r6, self.gf * 4)
+        r8 = residual_block(r7, self.gf * 4)
 
         #Upsampling
         #u1 = upconv2d(r4, self.gf*2, 3)
@@ -226,8 +230,8 @@ class Pix2Pix():
         #d7 = conv2d(u2, 3, 7, 1)
         #output_img = tensorflow.keras.activations.tanh(d7)
 
-        u1 = deconv2d(r4, r3, self.gf*4)
-        u2 = deconv2d(u1, d5, self.gf*4)
+        u1 = deconv2d(r8, r7, self.gf*4)
+        u2 = deconv2d(u1, r7, self.gf*4)
         #u3 = deconv2d(u2, d4, self.gf*4)
         #u4 = deconv2d(u3, d3, self.gf*2)
         #u5 = deconv2d(u4, d2, self.gf*2)
