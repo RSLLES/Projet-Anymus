@@ -93,7 +93,7 @@ class DataLoader():
 
 from tensorflow.keras.layers import Input, Dense, Reshape, Flatten, Dropout, Concatenate
 from tensorflow.keras.layers import BatchNormalization, Activation, ZeroPadding2D
-from tensorflow.keras.layers import LeakyReLU
+from tensorflow.keras.layers import LeakyReLU, ReLU
 from tensorflow.keras.layers import UpSampling2D, Conv2D, Conv2DTranspose
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.optimizers import Adam
@@ -161,13 +161,21 @@ class Pix2Pix():
     def build_generator(self):
         """U-Net Generator"""
 
-        def conv2d(layer_input, filters, f_size=4, bn=True):
-            """Layers used during downsampling"""
-            d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
-            d = LeakyReLU(alpha=0.2)(d)
-            if bn:
+        def conv2d(layer_input, n_filters, f_size=4, l_stride = 1, is_relu = True, is_norm = True, padding_type = 'same'):
+            # On effectue le down sampling
+            d = Conv2D(filters = n_filters, kernel_size = f_size, strides = l_stride, padding = padding_type)(layer_input)
+            if is_norm:
                 d = BatchNormalization(momentum=0.8)(d)
+            if is_relu:
+                d = ReLU()(d)
             return d
+
+        def upconv2d(layer_input, n_filters, f_size, strides=2):
+            """Layers used during upsampling"""
+            u = Conv2DTranspose(n_filters, f_size, strides, padding = 'same')(layer_input)
+            u = BatchNormalization(momentum=0.8)(u)
+            u = ReLU()(u)
+            return u
 
         def deconv2d(layer_input, skip_input, filters, f_size=4, dropout_rate=0):
             """Layers used during upsampling"""
@@ -176,19 +184,15 @@ class Pix2Pix():
             if dropout_rate:
                 u = Dropout(dropout_rate)(u)
             u = BatchNormalization(momentum=0.8)(u)
-            u = Concatenate()([u, skip_input])
+            #u = Concatenate()([u, skip_input])
             return u
-
-        def upconv2d(layer_input, filters, f_size):
-            x = UpSampling2D((2, 2))(layer_input)
-            x = Conv2D(filters, f_size, padding='same')(x)
 
         def residual_block(y, nb_channels):
             shortcut = y
 
             y = Conv2D(nb_channels, kernel_size=(3, 3), strides=(1,1), padding='same')(y)
             y = BatchNormalization()(y)
-            y = LeakyReLU()(y)
+            y = ReLU()(y)
 
             y = Conv2D(nb_channels, kernel_size=(3, 3), strides=(1, 1), padding='same')(y)
             y = BatchNormalization()(y)
@@ -197,53 +201,54 @@ class Pix2Pix():
             shortcut = BatchNormalization()(shortcut)
 
             y = tensorflow.keras.layers.add([shortcut, y])
-            y = LeakyReLU()(y)
             return y
 
         # Image input
         d0 = Input(shape=self.img_shape)
 
         # Downsampling
-        d1 = conv2d(d0, self.gf, bn=False)
-        d2 = conv2d(d1, self.gf*2)
-        d3 = conv2d(d2, self.gf*4)
-        d4 = conv2d(d3, self.gf*8)
-        d5 = conv2d(d4, self.gf*8)
-        d6 = conv2d(d5, self.gf*8)
-        d7 = conv2d(d6, self.gf*8)
+        d1 = conv2d(d0, self.gf, 7, 1)
+        d2 = conv2d(d1, self.gf*2, 3, 2, False, False, 'same')
+        d3 = conv2d(d2, self.gf*2, 3, 1)
+        d4 = conv2d(d3, self.gf*4, 3, 2, False, False, 'same')
+        d5 = conv2d(d4, self.gf*4, 3, 1)
 
         # Residual blocks 
 
-        r1 = residual_block(d7,64)
-        r2 = residual_block(r1,64)
-        r3 = residual_block(r2,64)
-        r4 = residual_block(r3,64)
-        r5 = residual_block(r4,64)
-        r6 = residual_block(r5,64)
-        r7 = residual_block(r6,64)
-        r8 = residual_block(r7,64)
+        r1 = residual_block(d5, self.gf * 4)
+        r2 = residual_block(r1, self.gf * 4)
+        r3 = residual_block(r2, self.gf * 4)
+        r4 = residual_block(r3, self.gf * 4)
+        r5 = residual_block(r4, self.gf * 4)
+        r6 = residual_block(r5, self.gf * 4)
+        r7 = residual_block(r6, self.gf * 4)
+        r8 = residual_block(r7, self.gf * 4)
 
         #Upsampling
-        u1 = deconv2d(d7, d6, self.gf*8)
-        u2 = deconv2d(u1, d5, self.gf*8)
-        u3 = deconv2d(u2, d4, self.gf*8)
-        u4 = deconv2d(u3, d3, self.gf*4)
-        u5 = deconv2d(u4, d2, self.gf*2)
-        u6 = deconv2d(u5, d1, self.gf)
+        #u1 = upconv2d(r4, self.gf*2, 3)
+        #u2 = upconv2d(u1, self.gf, 3)
+        #d7 = conv2d(u2, 3, 7, 1)
+        #output_img = tensorflow.keras.activations.tanh(d7)
 
-        u7 = UpSampling2D(size=2)(u6)
+        u1 = deconv2d(r8, r7, self.gf*4)
+        u2 = deconv2d(u1, r7, self.gf*4)
+        #u3 = deconv2d(u2, d4, self.gf*4)
+        #u4 = deconv2d(u3, d3, self.gf*2)
+        #u5 = deconv2d(u4, d2, self.gf*2)
+        #u6 = deconv2d(u5, d1, self.gf)
+        #u7 = UpSampling2D(size=2)(u6)
+        output_img = Conv2D(self.channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u2)
 
-        output_img = Conv2D(self.channels, kernel_size=4, strides=1, padding='same', activation='tanh')(u7)
         return Model(d0, output_img)
 
     def build_discriminator(self):
 
-        def d_layer(layer_input, filters, f_size=4, bn=True):
-            """Discriminator layer"""
-            d = Conv2D(filters, kernel_size=f_size, strides=2, padding='same')(layer_input)
-            d = LeakyReLU(alpha=0.2)(d)
-            if bn:
+        def d_layer(layer_input, filters, f_size=4, l_stride = 1, is_norm = True, is_relu = False):
+            d = Conv2D(filters, kernel_size=f_size, strides=l_stride, padding='same')(layer_input)
+            if is_norm:
                 d = BatchNormalization(momentum=0.8)(d)
+            if is_relu:
+                d = LeakyReLU(alpha=0.2)(d)
             return d
 
         img_A = Input(shape=self.img_shape)
@@ -252,12 +257,15 @@ class Pix2Pix():
         # Concatenate image and conditioning image by channels to produce input
         combined_imgs = Concatenate(axis=-1)([img_A, img_B])
 
-        d1 = d_layer(combined_imgs, self.df, bn=False)
-        d2 = d_layer(d1, self.df*2)
-        d3 = d_layer(d2, self.df*4)
-        d4 = d_layer(d3, self.df*8)
+        d1 = d_layer(combined_imgs, self.df, f_size = 3, l_stride = 1, is_norm = False, is_relu = True)
+        d2 = d_layer(d1, self.df*2, f_size = 3, l_stride = 2, is_norm = False, is_relu = True)
+        d3 = d_layer(d2, self.df*4, f_size = 3, l_stride = 1, is_norm = True, is_relu = True)
+        d4 = d_layer(d3, self.df*4, f_size = 3, l_stride = 2, is_norm = False, is_relu = True)
+        d5 = d_layer(d4, self.df*8, f_size = 3, l_stride = 1, is_norm = True, is_relu = True)
+        d6 = d_layer(d5, self.df*8, f_size = 3, l_stride = 1, is_norm = True, is_relu = True)
+        d7 = d_layer(d6, 1, f_size = 3, l_stride = 4, is_norm = False, is_relu = False)
 
-        validity = Conv2D(1, kernel_size=4, strides=1, padding='same')(d4)
+        validity = d7
 
         return Model([img_A, img_B], validity)
 
@@ -333,4 +341,4 @@ class Pix2Pix():
 
         
 skillboyz = Pix2Pix()
-skillboyz.train(30,2)
+skillboyz.train(30)
