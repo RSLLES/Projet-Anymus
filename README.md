@@ -1,21 +1,20 @@
-# Projet Animus
+# Projet Anymus
 
 Par ESCRIBE Florent, LANNELONGUE Vincent, LESEC Élie, SÉAILLES Romain
 
-## Synthèse du sujet proposé
+## Présentation et discussion sur le sujet retenu
+### Synthèse du sujet proposé
 L'intitulé du sujet portait sur le transfert de style.
 Notre encadrant nous a proposé un sujet assez large : le but était d'imaginer un transfert d’image
-ou de dessin (crayonné, bande dessinée...) vers un rendu manga. Il nous a conseillé de
-restreindre le sujet, ne pas être trop ambitieux pour que nous ayons un résultat à la fin. Il nous a
-donné plusieurs pistes de travaux, et a été très ouvert à nos propositions. Dès le début, le sujet
+ou de dessin (crayonné, bande dessinée...) vers un rendu manga. Dès le début, le sujet
 était orienté machine learning et réseaux de neurones, ce qui a par la suite conditionné notre
 approche.
 
-## Notre interprétation du sujet, notre objectif
+### Notre interprétation du sujet, notre objectif
 
 La première idée était de transformer un crayonné en un dessin de style manga. On s’est très vite
 concentré sur le visage pour faciliter un peu l'approche, entre autre pour avoir une base de donnée
-assez cohérente (photos/dessins cadrées de la même façon) , et pour ne pas vouloir trop en faire.
+assez cohérente (photos/dessins cadrées de la même façon), et pour ne pas vouloir trop en faire.
 Notre volonté de s’attaquer spécifiquement au visage vient aussi du fait que la forme du visage est
 ce qui fait la grande particularité du style Manga par des caractéristiques fortes (gros yeux, tête
 plus large, nez inexistant, etc …). Ce choix nous semble pertinent car en pratique il pourrait servir
@@ -25,7 +24,7 @@ Par la suite, nous nous sommes concentrés sur la transformation d’un visage h
 photo classique en un dessin '' manga-isé '', le dessin crayonné étant problématique pour plusieurs
 raisons détaillées plus tard.
 
-## Choix techniques et algorithmiques
+### Choix techniques et algorithmiques
 
 Dans un premier temps, nous avons travaillé sur du transfert de style : en utilisant un CNN préentraînés à la classification d'images (VGG 16 par exemple), il est possible de caractériser le style
 et le contenu d'une image, et ainsi de faire varier le premier tout en conservant une partie du
@@ -49,26 +48,7 @@ des filtres de convolution plus classiques.
 Dans le but de créer des bases de données adaptées, nous avons aussi réalisé plusieurs scripts
 python d’extraction de databases pertinentes depuis des sites spécifiques.
 
-## Niveau de réalisation actuel
-
-Les concepts algorithmiques sont bien appréhendés, mais les résultats ne sont pas encore au
-rendez-vous.
-Nous avons pour l'instant réussi à former des bases de données satisfaisantes pour entraîner nos
-réseaux, et nous avons réussi la partie manipulation d’images par python, cruciale pour intégrer
-nos dataset. Nous nous sommes alors entraînés à maîtriser la librairie Tensorflow en réalisant
-plusieurs réseaux de neurones de plus en plus sophistiqués. Nous avons réussi à reproduire des
-structures plus complexes comme des CGAN et à les modifier selon les conseils de plusieurs
-articles afin de mieux prendre en compte la spécificité du problème (faciliter la déformation des
-yeux plus que le simple changement de texture entre autre).
-En parallèle du travail sur les CGAN, nous avons entraîné un discriminateur hors-GAN afin de
-vérifier la cohérence de notre approche. Il s’agit d’un CNN classique entraîné sur une grande base
-de données de visages et de mangas (32 000 photos au total), utilisant des techniques de dropout,
-de régularisation, pour distinguer si l'image en entrée est une photo ou un dessin de manga.
-L'objectif de ce travail est de savoir si la base de données que nous avons arrive à bien
-caractériser photos de visages et visages mangas en général. Le but étant bien sûr d'intégrer cette
-architecture dans un GAN très vite.
-
-## Problèmes rencontrés et remarques
+### Problèmes rencontrés et remarques
 
 Il a été difficile de mesurer l’ampleur de la tâche au début du projet. Nous nous sommes très vite
 rendu compte de la complexité du travail sur le dessin : transformer l’intégralité des éléments d’une
@@ -84,3 +64,68 @@ vide (beaucoup de blanc).
 Pour ce qui est de notre travail sur les GAN et CGAN, nous faisons encore face à de nombreux
 problèmes bien connus de convergence sur les algorithmes utilisés. Dans le cas du CGAN :
 effondrement des modes, entrainement trop rapide des discriminateurs...
+
+## Utilisation
+### Structure du projet
+La dernière version du projet utilise l'architecture U-GAT-IT légèrement modifiée et implémentée à l'aide de la bibliothèque Keras.
+```
+.
+├── _CGAN/
+│   ├── custom_layer.py
+│   ├── data_loader.py
+│   ├── reseaux.py
+│   ├── run.py
+│   ├── train.py
+│   ├── utils.py
+│   └──_Trombi_results/
+│      ├── result-19escrive.jpg
+│      └── ...
+.
+```
+L'algorithme de transformation des visages se trouve dans le dossier CGAN.
+Il est divisé comme suit :
+- custom_layer.py contient nos propres layers construient à l'aide de la bibliothèque Keras. Ce fichier contient notamment le layer à double sortie Aux permettant de créer la sortie auxilliaire caractéristique de l'architecture permettant de l'entrainer ainsi que la nouvelle fonction d'activation AdaLin à la fois controlée par des poids entrainable et par une entrée spécifique.
+- data_loader.py Fichier repris et légèrement modifié du git de , permettant de gérer de facon particulièrement efficace l'importation d'images pour l'entrainement et la création de batch
+- reseaux.py Fichier contenant nos architecture reseau pour nos discriminateurs et nos générateurs ainsi que le modèle combiné permettant d'entrainer les seconds au travers des premiers selon les 4 équations spécifiques des Cycle GAN : Tromper le discriminateur, 2*Cycle consistency et 1 fois Identity
+- run.py Fichier permettant d'utiliser le reseau, expliqué plus bas
+- train.py Fichier permettant d'entrainer le reseau, expliqué plus bas
+- utils.py Contient quelques fonctions utiles notamment pour l'importation et la sauvegarde des poids des réseaux.
+- Trombi_results/ Dossier contenant nos résultats en faisant tourné notre algorithme sur les photos de profils des élèves p18 et p19 du portail des élèves.
+
+### Utilisation du réseau : run.py
+Le paramètre help du fichier explique son fonctionnement :
+```
+>>> python .\run.py -h
+usage: run.py [-h] [-o O] [-g G] [-p P] [-m] [-v] image
+
+Permet de faire tourner le réseau de transformation Visage -> Manga sur des images.
+
+positional arguments:
+  image          Chemin vers l'image à traiter. Cela peut aussi etre un chemin vers un dossier, auquel cas toutes les
+                 images trouvées dedans seront traitées
+
+optional arguments:
+  -h, --help     show this help message and exit
+  -o O           Dossier dans lequel seront stockés les résultats. Par défaut 'results/'
+  -g G           Chemin vers le fichier contenant les poids du générateur à utiliser. Par défaut 'g.h5'
+  -p P           Ajoute le prefixe prefixe-nom_de_l'image_original.jpg au résultat. 'result' par défaut.
+  -m, --mosaic   Pour traiter des images hd qui ne doivent pas être redimensionnées en 256x256. Elles seront alors
+                 composées d'une mosaic de carrés de tailles 256x256.
+  -v, --verbose  Affiche les logs de tensorflow
+>>>
+```
+Comme expliqué, il est possible de donner en entrée du script à la fois une image précise à transformée, ou bien de lui donner un dossier auquel cas le script rechercera tous les images à l'intérieur et les traitera toutes.
+
+Par défaut, toutes les images seront recadrés en 256x256 avant d'être modifié. Il est malgré tout possible de traiter des images plus grande à l'aide de l'argument mosaic, qui va alors subdiviser une grandes images en une série de carré d 256x256 pour es traiter indépendament et reconstruire par collage l'image originale à l'arrivée. Il est à noter que cette fonction fait sortir l'algorithme de son cadre d'utilisation normal et donc ne donne pas des résultats convaincant : c'est purement une fonction de test qui a été laissée dans la version finale.
+
+Un générateur pré entrainé peut êre trouvé ici en libre accès :
+
+Exemple d'utilisation :
+```
+>>> python .\run.py -g .\g.h5 -o .\results_live\ .\inputs_live\
+Using TensorFlow backend.
+Traitement du dossier .\inputs_live\ en 256x256
+Weights loaded
+100%|███████████████████████████████████| 9/9 [00:11<00:00,  1.25s/it]
+>>>
+```
