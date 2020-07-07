@@ -129,3 +129,16 @@ Weights loaded
 100%|███████████████████████████████████| 9/9 [00:11<00:00,  1.25s/it]
 >>>
 ```
+Ce qui donne comme résultat les images proposées en introduction du README.
+
+Il est aussi possible de l'utiliser sur une séquence d'image puis de recompiler le tout pour en faire un .gif amusant :
+```
+>>> python .\run.py -o .\Gatsby_output\ -g .\g.h5 .\Gatsby\
+Using TensorFlow backend.
+Traitement du dossier .\Gatsby\ en 256x256
+Weights loaded
+100%|███████████████████████████████████| 89/89 [00:13<00:00,  6.47it/s]
+>>>
+```
+Ce qui donne comme résultat après avoir recompilé les images avec ffmpeg en un gif:
+![The great Gatsby](README_Illustration/gatsby.gif)
