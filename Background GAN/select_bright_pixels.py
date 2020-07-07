@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jun 18 19:48:43 2020
-
-@author: eliel
-"""
+# Pour constituer un dataset plus lumineux, cet algorithme effectue un trie parmi les images de myazaki : 
 
 import shutil
 from glob import glob 

@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jun 18 19:48:43 2020
-
-@author: eliel
-"""
+# Petit code qui permet de facilement extraire des images d'un dataset pour former un training set
 
 import shutil
 from glob import glob 
