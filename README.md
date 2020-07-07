@@ -1,5 +1,5 @@
 # Projet Anymus
-![La team de CHOC](README_Illustration/team.png)
+![La team de CHOC](README_Illustration/Team.png)
 Par ESCRIBE Florent, LANNELONGUE Vincent, LESEC Élie, SÉAILLES Romain
 
 ## Présentation et discussion sur le sujet retenu
