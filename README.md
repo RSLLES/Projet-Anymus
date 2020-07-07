@@ -67,7 +67,7 @@ effondrement des modes, entrainement trop rapide des discriminateurs...
 
 ## Utilisation
 ### Structure du projet
-La dernière version du projet utilise l'architecture U-GAT-IT légèrement modifiée et implémentée à l'aide de la bibliothèque Keras.
+La dernière version du projet utilise l'architecture *U-GAT-IT* légèrement modifiée et implémentée à l'aide de la bibliothèque Keras.
 ```
 .
 ├── _CGAN/
@@ -78,22 +78,22 @@ La dernière version du projet utilise l'architecture U-GAT-IT légèrement modi
 │   ├── train.py
 │   ├── utils.py
 │   └──_Trombi_results/
-│      ├── result-19escrive.jpg
+│      ├── result-19escribe.jpg
 │      └── ...
 .
 ```
 L'algorithme de transformation des visages se trouve dans le dossier CGAN.
 Il est divisé comme suit :
-- custom_layer.py contient nos propres layers construient à l'aide de la bibliothèque Keras. Ce fichier contient notamment le layer à double sortie Aux permettant de créer la sortie auxilliaire caractéristique de l'architecture permettant de l'entrainer ainsi que la nouvelle fonction d'activation AdaLin à la fois controlée par des poids entrainable et par une entrée spécifique.
-- data_loader.py Fichier repris et légèrement modifié du git de , permettant de gérer de facon particulièrement efficace l'importation d'images pour l'entrainement et la création de batch
-- reseaux.py Fichier contenant nos architecture reseau pour nos discriminateurs et nos générateurs ainsi que le modèle combiné permettant d'entrainer les seconds au travers des premiers selon les 4 équations spécifiques des Cycle GAN : Tromper le discriminateur, 2*Cycle consistency et 1 fois Identity
-- run.py Fichier permettant d'utiliser le reseau, expliqué plus bas
-- train.py Fichier permettant d'entrainer le reseau, expliqué plus bas
-- utils.py Contient quelques fonctions utiles notamment pour l'importation et la sauvegarde des poids des réseaux.
-- Trombi_results/ Dossier contenant nos résultats en faisant tourné notre algorithme sur les photos de profils des élèves p18 et p19 du portail des élèves.
+- `custom_layer.py` contient nos propres layers fabriqués à l'aide de la bibliothèque Keras. Ce fichier contient notamment le layer à double sortie Aux permettant de créer la sortie auxiliaire caractéristique de l'architecture permettant de l'entrainer ainsi que la nouvelle fonction d'activation AdaLin à la fois contrôlée par des poids entrainables et par une entrée spécifique.
+- `data_loader.py` Fichier repris et légèrement modifié du git de , permettant de gérer de façon particulièrement efficace l'importation d'images pour l'entrainement et la création de batch.
+- `reseaux.py` Fichier contenant nos architectures réseau pour nos discriminateurs et nos générateurs ainsi que le modèle combiné permettant d'entrainer les seconds au travers des premiers selon les 4 équations spécifiques des Cycle GAN : Tromper le discriminateur, 2*Cycle consistency et 1 fois Identity
+- `run.py` Fichier permettant d'utiliser le réseau, expliqué plus bas
+- `train.py` Fichier permettant d'entrainer le réseau, expliqué plus bas
+- `utils.py` contient quelques fonctions utiles notamment pour l'importation et la sauvegarde des poids des réseaux.
+- `Trombi_results/` Dossier contenant nos résultats en faisant tourner notre algorithme sur les photos de profils des élèves p18 et p19 du portail des élèves.
 
-### Utilisation du réseau : run.py
-Le paramètre help du fichier explique son fonctionnement :
+### Utilisation du réseau : `run.py`
+Le paramètre help du script explique son fonctionnement :
 ```
 >>> python .\run.py -h
 usage: run.py [-h] [-o O] [-g G] [-p P] [-m] [-v] image
@@ -114,11 +114,15 @@ optional arguments:
   -v, --verbose  Affiche les logs de tensorflow
 >>>
 ```
-Comme expliqué, il est possible de donner en entrée du script à la fois une image précise à transformée, ou bien de lui donner un dossier auquel cas le script rechercera tous les images à l'intérieur et les traitera toutes.
+Comme expliqué, il est possible de donner en entrée du script à la fois une image précise à transformée, ou bien de lui donner un dossier auquel cas le script recherchera toutes les images à l'intérieur et les traitera toutes.
 
-Par défaut, toutes les images seront recadrés en 256x256 avant d'être modifié. Il est malgré tout possible de traiter des images plus grande à l'aide de l'argument mosaic, qui va alors subdiviser une grandes images en une série de carré d 256x256 pour es traiter indépendament et reconstruire par collage l'image originale à l'arrivée. Il est à noter que cette fonction fait sortir l'algorithme de son cadre d'utilisation normal et donc ne donne pas des résultats convaincant : c'est purement une fonction de test qui a été laissée dans la version finale.
 
-Un générateur pré entrainé peut êre trouvé ici en libre accès :
+Par défaut, toutes les images seront recadrées en 256x256 avant d'être modifiées. Il est malgré tout possible de traiter des images plus grandes à l'aide de l'argument mosaic, qui va alors subdiviser une grande image en une série de carrés de 256x256 pour les traiter indépendamment et reconstruire par collage l'image originale à l'arrivée. Il est à noter que cette fonction fait sortir l'algorithme de son cadre d'utilisation normal et donc ne donne pas des résultats convaincants : c'est purement une fonction de test qui a été laissée dans la version finale.
+
+
+Un générateur préentrainé peut être trouvé ici en libre accès :
+`https://drive.google.com/file/d/1JhXtRSGdsbo9iFZIaCmXsc0j1l7TIWFf/view?usp=sharing`
+
 
 Exemple d'utilisation :
 ```
@@ -129,7 +133,7 @@ Weights loaded
 100%|███████████████████████████████████| 9/9 [00:11<00:00,  1.25s/it]
 >>>
 ```
-Ce qui donne comme résultat les images proposées en introduction du README.
+Ce qui donne comme résultat les images proposées en introduction du *README*.
 
 Il est aussi possible de l'utiliser sur une séquence d'image puis de recompiler le tout pour en faire un .gif amusant :
 ```
@@ -140,5 +144,53 @@ Weights loaded
 100%|███████████████████████████████████| 89/89 [00:13<00:00,  6.47it/s]
 >>>
 ```
-Ce qui donne comme résultat après avoir recompilé les images avec ffmpeg en un gif:
+Ce qui donne comme résultat après avoir recompilé les images avec *ffmpeg* en un gif:
 ![The great Gatsby](README_Illustration/gatsby.gif)
+
+
+### Entrainement du reseau : `train.py`
+`train.py` est beaucoup moins user friendly que `run.py`.
+Il suffit simplement de le lancer pour lancer l'entrainement. Le seul paramètre possible est un nombre qui permet de reprendre à n'importe quel epoch, utile lorsque l'entrainement est interrompu puis repris pour assurer la continuité des photos générées.
+
+
+
+Il est possible de spécifier à l'intérieur du code certaines variables, notamment :
+- `EPOCHS = 200` donne le nombre d'epochs à faire pendant l'entrainement
+- `dataset_name` Définie le nom du dataset à utiliser, ce qui doit match le nom du dossier contenu dans `CGAN/datasets/`
+- `SAMPLE_INTERVAL` Période (en termes de nombre d'images sur lesquels le réseau s'entraine) d'enregistrement de résultats sur le dataset test dans `CGAN/images/`
+
+
+Le lancement de ce script va créer et utiliser certains dossiers:
+```
+.
+├── _CGAN/
+│   ├── _datasets/
+│   │   └── _dataset_name/
+│   │       ├── trainA/
+│   │       ├── trainB/
+│   │       ├── testA/
+│   │       └── testB/
+│   ├── _images/
+│   │   └── dataset_name/
+│   ├──_Weights/
+│   │   └── _dataset_name/
+│   │       ├── d_A.h5
+│   │       ├── d_B.h5
+│   │       ├── g_AB.h5
+│   │       ├── g_BA.h5
+│   │       ├── aux_d_A.h5
+│   │       ├── aux_d_B.h5
+│   │       ├── aux_g_AB.h5
+│   │       └── aux_g_BA.h5
+│   .
+.
+```
+Le seul dossier *indispensable* est `CGAN/datasets/dataset_name/`. Il est en effet nécessaire d'avoir une database pour pouvoir entrainer le réseau. 
+Notre database est disponible ici : 
+`URL`
+
+
+Le dossier `images/` contient des images générées toutes les `SAMPLE_INTERVAL` images traitées sur le dataset test pour constater l'avancée de l'entrainement.
+
+
+Le dossier `Weights/`contiens les poids des différentes structures utilisées pendant l'entrainement. Le seul utilisé dans la suite par `run.py`est `g_AB.h5` (bien que techniquement il soit possible de lui substituer `g_BA.h5` si l'objectif est de transformer des visages manga en visages photoréalistes).
