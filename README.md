@@ -187,7 +187,7 @@ Le lancement de ce script va créer et utiliser certains dossiers:
 ```
 Le seul dossier *indispensable* est `CGAN/datasets/dataset_name/`. Il est en effet nécessaire d'avoir une database pour pouvoir entrainer le réseau. 
 Notre database est disponible ici : 
-`URL`
+`https://drive.google.com/file/d/1UulkqN4JgSHXhPwYPugHjoT2e1lNaI9K/view?usp=sharing`
 
 
 Le dossier `images/` contient des images générées toutes les `SAMPLE_INTERVAL` images traitées sur le dataset test pour constater l'avancée de l'entrainement.
