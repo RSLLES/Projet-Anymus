@@ -1,6 +1,6 @@
 # Projet Anymus
 ![La team de CHOC](README_Illustration/Team.png)
-Par ESCRIBE Florent, LANNELONGUE Vincent, LESEC Élie, SÉAILLES Romain. Projet supervisé par Florian Dupas.
+Projet supervisé par Florian Dupas. Par ESCRIBE Florent, LANNELONGUE Vincent, LESEC Élie, SÉAILLES Romain.
 
 ## Présentation et discussion sur le sujet retenu
 ### Synthèse du sujet proposé
