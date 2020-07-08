@@ -66,7 +66,29 @@ problèmes bien connus de convergence sur les algorithmes utilisés. Dans le cas
 effondrement des modes, entrainement trop rapide des discriminateurs...
 
 ## Utilisation
-### Structure du projet
+#### Structure du projet
+
+### BackgroundGAN - Transformation de l'arrière-plan
+
+La dernière version proposée du Background GAN n'est pas encore fonctionnelle. Pour résumer, la convergence de ce GAN repose sur un équilibre assez subtil entre transfert du style manga aux photos de l'arrière-plan, conservation du style et rejet des photos générées dont les bords sont flous. C'est la subtilité d'un tel équilibre qui nous pousse à croire que du travail est encore à fournir sur cet algorithme.
+
+La structure du dossier est la suivante : 
+
+```
+.
+├── Background GAN/
+│   ├── Background_GAN.py
+│   ├── select_bright_pixels.py
+│   ├── randomextract.py
+.
+```
+
+Il est divisé comme suit :
+- `Background_GAN.py` : le véritable coeur de l'algorithme. Contient à la fois le programme d'importation de la base de données, de création du GAN, d'entraînement de ce dernier et de sauvegarde des résultats
+- `select_bright_pixels.py` : Un des problèmes que nous avons régulièrement rencontrés est l'abondance de frames très sombres au sein des animés japonais, qui mènent ensuite à des résultats décevants. Ce petit programme auxiliaire permet de n'en garder les plus 
+- `randomextract.py` : Programme qui permet de créer un test set de façon aléatoire à partir du training set
+
+### CGAN - Transformation du visage
 La dernière version du projet utilise l'architecture *U-GAT-IT* légèrement modifiée et implémentée à l'aide de la bibliothèque Keras.
 ```
 .
